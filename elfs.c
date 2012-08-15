@@ -1229,15 +1229,95 @@ typedef struct {
         char name[128]; /* section/segment name */
 } telf_dirent;
 
-typedef struct {
+typedef struct elf_dir_hdl {
+        void *(*get_entryname_func)(telf_ctx *, struct elf_dir_hdl *, char **);
+
         int cursor;
-} telf_dir;
+        int n_entries;
+} telf_dir_hdl;
+
+static void *
+elf_symgetdirentname(telf_ctx *ctx,
+                     telf_dir_hdl *dir_hdl,
+                     char **namep)
+{
+        char *name = NULL;
+        Elf64_Sym *sym = NULL;
+
+        sym = elf_getnsym(ctx, dir_hdl->cursor);
+        if (! sym)
+                return NULL;
+
+        name = elf_symname(ctx, sym);
+        if (! name)
+                return NULL;
+
+        while ('/' == *name)
+                name++;
+
+        if (namep)
+                *namep = name;
+
+        return (void *) sym;
+}
+
+static void *
+elf_dsymgetdirentname(telf_ctx *ctx,
+                      telf_dir_hdl *dir_hdl,
+                      char **namep)
+{
+        char *name = NULL;
+        Elf64_Sym *sym = NULL;
+
+        sym = elf_getndsym(ctx, dir_hdl->cursor);
+        if (! sym)
+                return NULL;
+
+        name = elf_dsymname(ctx, sym);
+        if (! name)
+                return NULL;
+
+        while ('/' == *name)
+                name++;
+
+        if (namep)
+                *namep = name;
+
+        return (void *) sym;
+}
+
+static int
+elf_dir_ctor(telf_ctx *ctx,
+             telf_obj *obj,
+             telf_dir_hdl *dir)
+{
+        int ret;
+
+        switch (obj->type) {
+        case ELF_SECTION_DYNSYM:
+                dir->n_entries = ctx->n_dsyms;
+                dir->get_entryname_func = elf_dsymgetdirentname;
+                break;
+        case ELF_SECTION_SYMTAB:
+                dir->n_entries = ctx->n_syms;
+                dir->get_entryname_func = elf_symgetdirentname;
+                break;
+        default:
+                LOG(LOG_ERR, 0, "unhandled switched statement");
+                ret = -1;
+                goto end;
+        }
+
+        ret = 0;
+  end:
+        return ret;
+}
 
 static int
 elf_getdirent_rootdir(void *hdl,
                       telf_dirent *dirent)
 {
-        telf_dir *dir_hdl = hdl;
+        telf_dir_hdl *dir_hdl = hdl;
         char *name = NULL;
         telf_obj *current = NULL;
         telf_obj *rootdir = NULL;
@@ -1271,7 +1351,7 @@ elf_readdir_rootdir(telf_obj *obj,
                     fuse_fill_dir_t fill)
 {
         int ret;
-        telf_dir *dir_hdl = NULL;
+        telf_dir_hdl *dir_hdl = NULL;
         telf_dirent dirent;
 
         LOG(LOG_DEBUG, 0, "path=%s", path);
@@ -1302,7 +1382,7 @@ static int
 elf_getdirent_sections(void *hdl,
                        telf_dirent *dirent)
 {
-        telf_dir *dir_hdl = hdl;
+        telf_dir_hdl *dir_hdl = hdl;
         char *name = NULL;
         Elf64_Shdr *sh_strtab = ctx->shdr + ctx->ehdr->e_shstrndx;
 
@@ -1339,7 +1419,7 @@ elf_readdir_sections(telf_obj *obj,
                      fuse_fill_dir_t fill)
 {
         int ret;
-        telf_dir *dir_hdl = NULL;
+        telf_dir_hdl *dir_hdl = NULL;
         telf_dirent dirent;
 
         dir_hdl = alloca(sizeof *dir_hdl);
@@ -1365,158 +1445,28 @@ elf_readdir_sections(telf_obj *obj,
 }
 
 static int
-elf_getdirent_section_symtab(void *hdl,
-                             telf_dirent *dirent)
-{
-        telf_dir *dir_hdl = hdl;
-        Elf64_Sym *sym = NULL;
-        char *name;
-
-        if (dir_hdl->cursor < ctx->n_syms) {
-                sym = elf_getnsym(ctx, dir_hdl->cursor);
-                name = elf_symname(ctx, sym);
-
-                while ('/' == *name)
-                        name++;
-
-                if (*name) {
-                        LOG(LOG_DEBUG, 0, "got sym entry '%s'", elf_symname(ctx, sym));
-                        sprintf(dirent->name, "%s", elf_symname(ctx, sym));
-                } else {
-                        sprintf(dirent->name, ".noname.%p", (void *) sym);
-                }
-
-                dir_hdl->cursor++;
-                return 0;
-        }
-
-        return -1;
-}
-
-static int
-elf_readdir_section_symtab(telf_obj *obj, const char *path,
-                           void *data,
-                           fuse_fill_dir_t fill)
-{
-        int ret;
-        telf_dir *dir_hdl = NULL;
-        telf_dirent dirent;
-
-        LOG(LOG_DEBUG, 0, "path=%s", path);
-
-        dir_hdl = alloca(sizeof *dir_hdl);
-        if (! dir_hdl) {
-                LOG(LOG_CRIT, 1, "alloca");
-                ret = -1;
-                goto err;
-        }
-
-        memset(&dirent, 0, sizeof dirent);
-        memset(dir_hdl, 0, sizeof *dir_hdl);
-        LOG(LOG_DEBUG, 0, "size=%d, cursor: %d",
-            ctx->n_syms, dir_hdl->cursor);
-
-        while (0 == elf_getdirent_section_symtab(dir_hdl, &dirent)) {
-                if (fill(data, dirent.name, NULL, 0))
-                        break;
-        }
-
-        ret = 0;
-  err:
-        return ret;
-
-}
-
-static int
-elf_getdirent_section_dynsym(void *hdl,
-                             telf_dirent *dirent)
-{
-        telf_dir *dir_hdl = hdl;
-        Elf64_Sym *sym = NULL;
-        char *name = NULL;
-
-        if (dir_hdl->cursor >= ctx->n_dsyms)
-                return -1;
-
-        sym = elf_getndsym(ctx, dir_hdl->cursor);
-        name = elf_dsymname(ctx, sym);
-
-        while ('/' == *name)
-                name++;
-
-        if (*name) {
-                LOG(LOG_DEBUG, 0, "got sym entry '%s'", elf_dsymname(ctx, sym));
-                sprintf(dirent->name, "%s", elf_dsymname(ctx, sym));
-        } else {
-                sprintf(dirent->name, ".noname.%p", (void *) sym);
-        }
-
-        dir_hdl->cursor++;
-
-        return 0;
-}
-
-
-static int
-elf_readdir_section_dynsym(telf_obj *obj,
-                           const char *path,
-                           void *data,
-                           fuse_fill_dir_t fill)
-{
-        int ret;
-        telf_dir *dir_hdl = NULL;
-        telf_dirent dirent;
-
-        LOG(LOG_DEBUG, 0, "path=%s", path);
-
-        dir_hdl = alloca(sizeof *dir_hdl);
-        if (! dir_hdl) {
-                LOG(LOG_CRIT, 1, "alloca");
-                ret = -1;
-                goto err;
-        }
-
-        memset(&dirent, 0, sizeof dirent);
-        memset(dir_hdl, 0, sizeof *dir_hdl);
-        LOG(LOG_DEBUG, 0, "size=%d, cursor: %d",
-            ctx->n_dsyms, dir_hdl->cursor);
-
-        while (0 == elf_getdirent_section_dynsym(dir_hdl, &dirent)) {
-                if (fill(data, dirent.name, NULL, 0))
-                        break;
-        }
-
-        ret = 0;
-  err:
-        return ret;
-
-}
-
-static int
 elf_getdirent_section_entries(void *hdl,
                               telf_dirent *dirent)
 {
-        telf_dir *dir_hdl = hdl;
-        char *name;
-        Elf64_Shdr *shdr;
+        telf_dir_hdl *dir_hdl = hdl;
+        char *name = NULL;
+        void *addr =  NULL;
 
-        if (dir_hdl->cursor >= ctx->n_sections)
+        if (dir_hdl->cursor >= dir_hdl->n_entries)
                 return -1;
 
-        shdr = ctx->shdr + dir_hdl->cursor;
-
-        LOG(LOG_DEBUG, 0, "type=%"PRIu64, (uint64_t) shdr->sh_type);
-
-        switch (shdr->sh_type)  {
-        case SHT_SYMTAB:
-                LOG(LOG_DEBUG, 0, "SYMTAB");
-                break;
-        case SHT_DYNSYM:
-                LOG(LOG_DEBUG, 0, "DYNSYM");
-                break;
-        default:
+        addr = dir_hdl->get_entryname_func(ctx, dir_hdl, &name);
+        if (! addr) {
+                LOG(LOG_ERR, 0, "can't get entry name");
                 return -1;
         }
+
+        if (*name)
+                sprintf(dirent->name, "%s", name);
+        else
+                sprintf(dirent->name, ".noname.%p", addr);
+
+        dir_hdl->cursor++;
 
         return 0;
 }
@@ -1529,31 +1479,36 @@ elf_readdir_section_entries(telf_obj *obj,
 {
         int ret;
         int rc;
-        int offset = 0;
+        telf_dir_hdl *dir_hdl = NULL;
+        telf_dirent dirent;
 
-        LOG(LOG_DEBUG, 0, "path=%s, type=%s", path, elf_type_to_str(obj->type));
+        LOG(LOG_DEBUG, 0, "path=%s", path);
 
-        switch (obj->type) {
-        case ELF_SECTION_DYNSYM:
-                offset = 0;
-                break;
-        case ELF_SECTION_SYMTAB:
-                offset = 1;
-                break;
-        default:
-                return 0;
+        dir_hdl = alloca(sizeof *dir_hdl);
+        if (! dir_hdl) {
+                LOG(LOG_CRIT, 1, "alloca");
+                ret = -1;
+                goto err;
         }
 
-        int (* cb[])(telf_obj *obj, const char *path,
-                     void *data,
-                     fuse_fill_dir_t fill) = {
-                elf_readdir_section_dynsym,
-                elf_readdir_section_symtab,
-        };
+        memset(&dirent, 0, sizeof dirent);
+        memset(dir_hdl, 0, sizeof *dir_hdl);
 
-        ret = cb[offset](obj, path, data, fill);
-  end:
+        rc = elf_dir_ctor(ctx, obj, dir_hdl);
+        if (-1 == rc) {
+                ret =- 1;
+                goto err;
+        }
+
+        while (0 == elf_getdirent_section_entries(dir_hdl, &dirent)) {
+                if (fill(data, dirent.name, NULL, 0))
+                        break;
+        }
+
+        ret = 0;
+  err:
         return ret;
+
 }
 
 static int
