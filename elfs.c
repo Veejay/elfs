@@ -43,13 +43,14 @@ int loglevel = LOG_ERR;
 #define LOG
 #endif
 
+#define N_ELEMS(x) (sizeof x / sizeof x[0])
 
 typedef struct {
         int loglevel;
         pthread_mutex_t mutex;
         struct stat st;
         char path[PATH_MAX];
-        void *addr;
+        unsigned char *addr;
 
         unsigned char class;    /* ELFCLASS32 or ELFCLASS64 */
         Elf64_Ehdr *ehdr;       /* elf header */
@@ -70,47 +71,109 @@ typedef struct {
 } telf_ctx;
 
 typedef enum {
-        ELF_SECTION,
         ELF_SECTION_NULL,
-        ELF_SECTION_SYMTAB,
-        ELF_SECTION_DYNSYM,
-        ELF_SECTION_NOBITS,
         ELF_SECTION_PROGBITS,
-        ELF_SECTION_DYNAMIC,
-        ELF_SECTION_HASH,
-        ELF_SECTION_NOTE,
-        ELF_SECTION_REL,
-        ELF_SECTION_RELA,
+        ELF_SECTION_SYMTAB,
         ELF_SECTION_STRTAB,
+        ELF_SECTION_RELA,
+        ELF_SECTION_HASH,
+        ELF_SECTION_DYNAMIC,
+        ELF_SECTION_NOTE,
+        ELF_SECTION_NOBITS,
+        ELF_SECTION_REL,
+        ELF_SECTION_SHLIB,
+        ELF_SECTION_DYNSYM,
+        ELF_SECTION_INIT_ARRAY,
+        ELF_SECTION_FINI_ARRAY,
+        ELF_SECTION_PREINIT_ARRAY,
+        ELF_SECTION_GROUP,
+        ELF_SECTION_SYMTAB_SHNDX,
+        ELF_SECTION_NUM,
+        ELF_SECTION_LOOS,
+        ELF_SECTION_GNU_ATTRIBUTES,
+        ELF_SECTION_GNU_HASH,
+        ELF_SECTION_GNU_LIBLIST,
+        ELF_SECTION_CHECKSUM,
+        ELF_SECTION_LOSUNW,
+        ELF_SECTION_SUNW_move,
+        ELF_SECTION_SUNW_COMDAT,
+        ELF_SECTION_SUNW_syminfo,
+        ELF_SECTION_GNU_verdef,
+        ELF_SECTION_GNU_verneed,
+        ELF_SECTION_GNU_versym,
+        ELF_SECTION_HISUNW,
+        ELF_SECTION_HIOS,
+        ELF_SECTION_LOPROC,
+        ELF_SECTION_HIPROC,
+        ELF_SECTION_LOUSER,
+        ELF_SECTION_HIUSER,
+
         ELF_SECTION_OTHER,
+        ELF_SECTION,
         ELF_SYMBOL,
         ELF_ROOTDIR,
 } telf_type;
 
+typedef struct {
+        telf_type val;
+        char *name;
+} telf_map;
+
+telf_map types[] = {
+#define MAP(x) { .val = x, .name = #x }
+        MAP(ELF_SECTION_NULL),
+        MAP(ELF_SECTION_PROGBITS),
+        MAP(ELF_SECTION_SYMTAB),
+        MAP(ELF_SECTION_STRTAB),
+        MAP(ELF_SECTION_RELA),
+        MAP(ELF_SECTION_HASH),
+        MAP(ELF_SECTION_DYNAMIC),
+        MAP(ELF_SECTION_NOTE),
+        MAP(ELF_SECTION_NOBITS),
+        MAP(ELF_SECTION_REL),
+        MAP(ELF_SECTION_SHLIB),
+        MAP(ELF_SECTION_DYNSYM),
+        MAP(ELF_SECTION_INIT_ARRAY),
+        MAP(ELF_SECTION_FINI_ARRAY),
+        MAP(ELF_SECTION_PREINIT_ARRAY),
+        MAP(ELF_SECTION_GROUP),
+        MAP(ELF_SECTION_SYMTAB_SHNDX),
+        MAP(ELF_SECTION_NUM),
+        MAP(ELF_SECTION_LOOS),
+        MAP(ELF_SECTION_GNU_ATTRIBUTES),
+        MAP(ELF_SECTION_GNU_HASH),
+        MAP(ELF_SECTION_GNU_LIBLIST),
+        MAP(ELF_SECTION_CHECKSUM),
+        MAP(ELF_SECTION_LOSUNW),
+        MAP(ELF_SECTION_SUNW_move),
+        MAP(ELF_SECTION_SUNW_COMDAT),
+        MAP(ELF_SECTION_SUNW_syminfo),
+        MAP(ELF_SECTION_GNU_verdef),
+        MAP(ELF_SECTION_GNU_verneed),
+        MAP(ELF_SECTION_GNU_versym),
+        MAP(ELF_SECTION_HISUNW),
+        MAP(ELF_SECTION_HIOS),
+        MAP(ELF_SECTION_LOPROC),
+        MAP(ELF_SECTION_HIPROC),
+        MAP(ELF_SECTION_LOUSER),
+        MAP(ELF_SECTION_HIUSER),
+
+        MAP(ELF_SECTION_OTHER),
+        MAP(ELF_SECTION),
+        MAP(ELF_SYMBOL),
+        MAP(ELF_ROOTDIR),
+#undef MAP
+};
+
 static char *
 elf_type_to_str(telf_type type)
 {
-#define MAP(x) case x: return #x
+        int i;
 
-        switch (type) {
-                MAP(ELF_SECTION);
-                MAP(ELF_SECTION_NULL);
-                MAP(ELF_SECTION_SYMTAB);
-                MAP(ELF_SECTION_DYNSYM);
-                MAP(ELF_SECTION_NOBITS);
-                MAP(ELF_SECTION_PROGBITS);
-                MAP(ELF_SECTION_DYNAMIC);
-                MAP(ELF_SECTION_HASH);
-                MAP(ELF_SECTION_NOTE);
-                MAP(ELF_SECTION_REL);
-                MAP(ELF_SECTION_RELA);
-                MAP(ELF_SECTION_STRTAB);
-                MAP(ELF_SECTION_OTHER);
-                MAP(ELF_SYMBOL);
-                MAP(ELF_ROOTDIR);
+        for (i = 0; i < N_ELEMS(types); i++) {
+                if (type == types[i].val)
+                        return types[i].name;
         }
-
-#undef MAP
 
         return "impossible";
 }
@@ -195,7 +258,7 @@ elf_ctx_free(telf_ctx *ctx)
 {
         if (ctx) {
                 if (ctx->addr)
-                        (void) munmap(ctx->addr, ctx->st.st_size);
+                        (void) munmap((void *) ctx->addr, ctx->st.st_size);
 
                 if (ctx->root)
                         list_free(ctx->root);
@@ -205,18 +268,18 @@ elf_ctx_free(telf_ctx *ctx)
 }
 
 static int
-elf_sanity_check(void *addr)
+elf_sanity_check(unsigned char *addr)
 {
         int ret;
 
-        if (strncmp((char *) addr, ELFMAG, SELFMAG)) {
-                LOG(LOG_ERR, 0, "bad magic: %*s", SELFMAG, (char *) addr);
+        if (strncmp(addr, ELFMAG, SELFMAG)) {
+                LOG(LOG_ERR, 0, "bad magic: %*s", SELFMAG, addr);
                 ret = -1;
                 goto end;
         }
 
-        if (ELFCLASSNONE == (char *) addr + EI_CLASS) {
-                LOG(LOG_ERR, 0, "bad elf class %c", *((char *) addr + EI_CLASS));
+        if (ELFCLASSNONE == addr + EI_CLASS) {
+                LOG(LOG_ERR, 0, "bad elf class %c", addr[EI_CLASS]);
                 ret = -1;
                 goto end;
         }
@@ -248,17 +311,19 @@ elf_mmap_internal(telf_ctx *ctx)
                 goto err;
         }
 
-        rc = elf_sanity_check(addr);
+        ctx->addr = (unsigned char *) addr;
+
+        rc = elf_sanity_check(ctx->addr);
         if (-1 == rc) {
                 LOG(LOG_ERR, 0, "sanity checks failed");
                 ret = -1;
                 goto err;
         }
 
-        ctx->class = *((unsigned char *) addr + EI_CLASS);
+        ctx->class = ctx->addr[EI_CLASS];
 
         LOG(LOG_DEBUG, 0, "class=%s",
-            (ELFCLASS32==ctx->class) ? "ELFCLASS32":"ELFCLASS64");
+            (ELFCLASS32 == ctx->class) ? "ELFCLASS32":"ELFCLASS64");
 
         ctx->ehdr = (Elf64_Ehdr *) addr;
         ctx->shdr = (Elf64_Shdr *) ((char *) addr + ctx->ehdr->e_shoff);
@@ -290,7 +355,7 @@ elf_getsectionname(telf_ctx *ctx,
                    Elf64_Shdr *shdr)
 {
         Elf64_Shdr *sh_strtab = ctx->shdr + ctx->ehdr->e_shstrndx;
-        char *sh_strtab_p = ((char *) ctx->addr) + sh_strtab->sh_offset;
+        char *sh_strtab_p = ctx->addr + sh_strtab->sh_offset;
 
         return sh_strtab_p + shdr->sh_name;
 }
@@ -303,7 +368,7 @@ elf_getnsectionname(telf_ctx *ctx,
                 return NULL;
 
         Elf64_Shdr *sh_strtab = ctx->shdr + ctx->ehdr->e_shstrndx;
-        char *sh_strtab_p = ((char *) ctx->addr) + sh_strtab->sh_offset;
+        char *sh_strtab_p = ctx->addr + sh_strtab->sh_offset;
 
         return sh_strtab_p + ctx->shdr[n].sh_name;
 }
@@ -369,12 +434,8 @@ elf_namei(telf_ctx *ctx,
 
                 start = p;
 
-                LOG(LOG_DEBUG, 0, "start='%s', p='%s'", start, p);
                 while (p && *p && '/' != *p)
                         p++;
-                LOG(LOG_DEBUG, 0, "start='%s', p='%s'", start, p);
-
-                LOG(LOG_DEBUG, 0, "parent: %s", parent->path);
 
                 current = strndupa(start, (size_t) (p - start));
                 if (! current) {
@@ -383,7 +444,6 @@ elf_namei(telf_ctx *ctx,
                         goto end;
                 }
 
-                LOG(LOG_DEBUG, 0, "current dir/file: %s", current);
 
                 if (! parent->entries) {
                         LOG(LOG_DEBUG, 0, "%s not found", current);
@@ -457,7 +517,7 @@ elf_build_sections(telf_ctx *ctx)
         telf_obj *sections_obj = NULL;
 
         Elf64_Shdr *sh_strtab = ctx->shdr + ctx->ehdr->e_shstrndx;
-        char *sh_strtab_p = ((char *) ctx->addr) + sh_strtab->sh_offset;
+        char *sh_strtab_p = ctx->addr + sh_strtab->sh_offset;
 
         rc = elf_namei(ctx, "/sections", &sections_obj);
         if (-1 == rc) {
@@ -615,15 +675,17 @@ elf_build_symtab(telf_ctx *ctx)
         }
 
         for (i = 0; i < ctx->ehdr->e_shnum; i++) {
-                if (SHT_SYMTAB == ctx->shdr[i].sh_type) {/* static symbol table */
-                        ctx->n_syms = ctx->shdr[i].sh_size / sizeof (Elf64_Sym);
-                        LOG(LOG_DEBUG, 0, "section '%s' found: offset=%"PRIu64", size: %d, #entries: %d",
-                            (char *) ctx->addr + ctx->shdr[ctx->shdr[i].sh_link].sh_name,
-                            ctx->shdr[i].sh_offset, (int) ctx->shdr[i].sh_size, ctx->n_syms);
-                        ctx->symtab = (Elf64_Sym *) ((char *) ctx->addr + ctx->shdr[i].sh_offset);
-                        ctx->symtab_end = (Elf64_Sym *) ((char *) ctx->symtab + ctx->shdr[i].sh_size);
-                        ctx->strtab = (char *) ctx->addr + ctx->shdr[ctx->shdr[i].sh_link].sh_offset;
-                }
+                if (SHT_SYMTAB != ctx->shdr[i].sh_type)
+                        continue;
+
+                ctx->n_syms = ctx->shdr[i].sh_size / sizeof (Elf64_Sym);
+                LOG(LOG_DEBUG, 0, "section '%s' found: offset=%"PRIu64", "
+                    "size: %d, #entries: %d",
+                    ctx->addr + ctx->shdr[ctx->shdr[i].sh_link].sh_name,
+                    ctx->shdr[i].sh_offset, (int) ctx->shdr[i].sh_size, ctx->n_syms);
+                ctx->symtab = (Elf64_Sym *) (ctx->addr + ctx->shdr[i].sh_offset);
+                ctx->symtab_end = (Elf64_Sym *) (ctx->symtab + ctx->shdr[i].sh_size);
+                ctx->strtab = ctx->addr + ctx->shdr[ctx->shdr[i].sh_link].sh_offset;
         }
 
         if (! ctx->n_syms) {
@@ -663,6 +725,14 @@ elf_build_symtab(telf_ctx *ctx)
                 list_add(symtab_obj->entries, obj);
         }
 
+        for (i = 0; i < ctx->n_syms; i++) {
+                sym = elf_getnsym(ctx, i);
+                LOG(LOG_DEBUG, 0, "sym: %s (info:%u, other:%u, shndx:%u, "
+                    "value:%p, size:%zu)",
+                    elf_symname(ctx, sym), sym->st_info, sym->st_other,
+                    sym->st_shndx, (void *) sym->st_value, sym->st_size);
+        }
+
         ret = 0;
   end:
         return ret;
@@ -692,9 +762,9 @@ elf_build_dynsym(telf_ctx *ctx)
                         ctx->n_dsyms = ctx->shdr[i].sh_size / sizeof (Elf64_Sym);
                         LOG(LOG_DEBUG, 0, "dynamic symbol table found: offset=%"PRIu64", size: %d, #entries: %d",
                             ctx->shdr[i].sh_offset, (int) ctx->shdr[i].sh_size, ctx->n_dsyms);
-                        ctx->dsymtab = (Elf64_Sym *) ((char *) ctx->addr + ctx->shdr[i].sh_offset);
-                        ctx->dsymtab_end = (Elf64_Sym *) ((char *) ctx->dsymtab + ctx->shdr[i].sh_size);
-                        ctx->dstrtab = (char *) ctx->addr + ctx->shdr[ctx->shdr[i].sh_link].sh_offset;
+                        ctx->dsymtab = (Elf64_Sym *) (ctx->addr + ctx->shdr[i].sh_offset);
+                        ctx->dsymtab_end = (Elf64_Sym *) (ctx->dsymtab + ctx->shdr[i].sh_size);
+                        ctx->dstrtab = ctx->addr + ctx->shdr[ctx->shdr[i].sh_link].sh_offset;
                 }
         }
 
@@ -733,6 +803,14 @@ elf_build_dynsym(telf_ctx *ctx)
                 }
 
                 list_add(dynsym_obj->entries, obj);
+        }
+
+        for (i = 0; i < ctx->n_dsyms; i++) {
+                sym = elf_getndsym(ctx, i);
+                LOG(LOG_DEBUG, 0, "dsym: %s (info:%u, other:%u, shndx:%u, "
+                    "value:%p, size:%zu)",
+                    elf_dsymname(ctx, sym), sym->st_info, sym->st_other, 
+                    sym->st_shndx, (void *) sym->st_value, sym->st_size);
         }
 
         ret = 0;
@@ -793,20 +871,6 @@ elf_ctx_new(const char * const path)
         rc = elf_build_dynsym(ctx);
         if (-1 == rc)
                 goto err;
-
-        LOG(LOG_DEBUG, 0, "ITERATION OVER STATIC SYMBOLS!");
-        for (i = 0; i < ctx->n_syms; i++) {
-                sym = elf_getnsym(ctx, i);
-                LOG(LOG_DEBUG, 0, "sym: %s (info:%u, other:%u, shndx:%u, value:%p, size:%zu)",
-                    elf_symname(ctx, sym), sym->st_info, sym->st_other, sym->st_shndx, (void *) sym->st_value, sym->st_size);
-        }
-
-        LOG(LOG_DEBUG, 0, "ITERATION OVER DYNAMIC SYMBOLS!");
-        for (i = 0; i < ctx->n_dsyms; i++) {
-                sym = elf_getndsym(ctx, i);
-                LOG(LOG_DEBUG, 0, "dsym: %s (info:%u, other:%u, shndx:%u, value:%p, size:%zu)",
-                    elf_dsymname(ctx, sym), sym->st_info, sym->st_other, sym->st_shndx, (void *) sym->st_value, sym->st_size);
-        }
 
         LOG(LOG_DEBUG, 0, "ctx successfully created for file %s", path);
 
