@@ -1243,6 +1243,7 @@ elf_dir_ctor(telf_ctx *ctx,
              telf_obj *obj,
              telf_dir_hdl *dir)
 {
+        dir->cursor = 0;
         dir->obj = obj;
         dir->n_entries = list_get_size(obj->entries);
         dir->get_entryname_func = elf_direntname;
@@ -1305,7 +1306,6 @@ elf_readdir(const char *path,
         }
 
         memset(&dirent, 0, sizeof dirent);
-        memset(dir_hdl, 0, sizeof *dir_hdl);
 
         elf_dir_ctor(ctx, obj, dir_hdl);
 
