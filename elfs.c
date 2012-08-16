@@ -1252,9 +1252,6 @@ elf_symgetdirentname(telf_ctx *ctx,
         if (! name)
                 return NULL;
 
-        while ('/' == *name)
-                name++;
-
         if (namep)
                 *namep = name;
 
@@ -1277,13 +1274,53 @@ elf_dsymgetdirentname(telf_ctx *ctx,
         if (! name)
                 return NULL;
 
-        while ('/' == *name)
-                name++;
-
         if (namep)
                 *namep = name;
 
         return (void *) sym;
+}
+
+static void *
+elf_rootdirgetdirentname(telf_ctx *ctx,
+                         telf_dir_hdl *dir_hdl,
+                         char **namep)
+{
+        char *name = NULL;
+        telf_obj *current = NULL;
+        telf_obj *rootdir = NULL;
+
+        rootdir = list_get(ctx->root, "/");
+        if (! rootdir)
+                return NULL;
+
+        current = list_get_nth(rootdir->entries, dir_hdl->cursor);
+        if (! current)
+                return NULL;
+
+        name = current->path;
+
+        if (namep)
+                *namep = name;
+
+        return (void *) current;
+}
+
+static void *
+elf_sectiondirdirentname(telf_ctx *ctx,
+                         telf_dir_hdl *dir_hdl,
+                         char **namep)
+{
+        char *name = NULL;
+        Elf64_Shdr *shdr = NULL;
+
+        name = elf_getnsectionname(ctx, dir_hdl->cursor);
+        if (! name)
+                return NULL;
+
+        if (namep)
+                *namep = '.' == *name ? name + 1 : name;
+
+        return (void *) elf_getnsection(ctx, dir_hdl->cursor);
 }
 
 static int
@@ -1302,9 +1339,17 @@ elf_dir_ctor(telf_ctx *ctx,
                 dir->n_entries = ctx->n_syms;
                 dir->get_entryname_func = elf_symgetdirentname;
                 break;
+        case ELF_SECTION:
+                dir->n_entries = ctx->n_sections;
+                dir->get_entryname_func = elf_sectiondirdirentname;
+                break;
+        case ELF_ROOTDIR:
+                dir->n_entries = list_get_size(obj->entries);
+                dir->get_entryname_func = elf_rootdirgetdirentname;
+                break;
         default:
-                LOG(LOG_ERR, 0, "unhandled switched statement");
-                ret = -1;
+                LOG(LOG_ERR, 0, "unhandled switched statement (%d)", obj->type);
+                ret = 0;
                 goto end;
         }
 
@@ -1314,139 +1359,8 @@ elf_dir_ctor(telf_ctx *ctx,
 }
 
 static int
-elf_getdirent_rootdir(void *hdl,
+elf_readdir_getdirent(void *hdl,
                       telf_dirent *dirent)
-{
-        telf_dir_hdl *dir_hdl = hdl;
-        char *name = NULL;
-        telf_obj *current = NULL;
-        telf_obj *rootdir = NULL;
-
-        rootdir = list_get(ctx->root, "/");
-        if (! rootdir)
-                return -1;
-
-        if (dir_hdl->cursor >= list_get_size(rootdir->entries))
-                return -1;
-
-        current = list_get_nth(rootdir->entries, dir_hdl->cursor);
-        if (! current)
-                return -1;
-
-        name = current->path;
-
-        while ('/' == *name)
-                name++;
-
-        dir_hdl->cursor++;
-        sprintf(dirent->name, "%s", name);
-
-        return 0;
-}
-
-static int
-elf_readdir_rootdir(telf_obj *obj,
-                    const char *path,
-                    void *data,
-                    fuse_fill_dir_t fill)
-{
-        int ret;
-        telf_dir_hdl *dir_hdl = NULL;
-        telf_dirent dirent;
-
-        LOG(LOG_DEBUG, 0, "path=%s", path);
-
-        dir_hdl = alloca(sizeof *dir_hdl);
-        if (! dir_hdl) {
-                LOG(LOG_CRIT, 1, "alloca");
-                ret = -1;
-                goto err;
-        }
-
-        memset(&dirent, 0, sizeof dirent);
-        memset(dir_hdl, 0, sizeof *dir_hdl);
-        LOG(LOG_DEBUG, 0, "#entries=%d", list_get_size(obj->entries));
-
-        while (0 == elf_getdirent_rootdir(dir_hdl, &dirent)) {
-                if (fill(data, dirent.name, NULL, 0))
-                        break;
-        }
-
-        ret = 0;
-  err:
-        return ret;
-
-}
-
-static int
-elf_getdirent_sections(void *hdl,
-                       telf_dirent *dirent)
-{
-        telf_dir_hdl *dir_hdl = hdl;
-        char *name = NULL;
-        Elf64_Shdr *sh_strtab = ctx->shdr + ctx->ehdr->e_shstrndx;
-
-        LOG(LOG_DEBUG, 0, "cursor=%d n_sections=%d", dir_hdl->cursor, ctx->n_sections);
-
-        if (dir_hdl->cursor >= ctx->n_sections)
-                return -1;
-
-        name = elf_getnsectionname(ctx, dir_hdl->cursor);
-        if (! name)
-                return -1;
-
-        LOG(LOG_DEBUG, 0, "name=%s", name);
-
-        while ('/' == *name)
-                name++;
-
-        if (! *name) {
-                sprintf(dirent->name, "noname.%p", sh_strtab + dir_hdl->cursor);
-        } else {
-                /* get rid of leading dot in section name */
-                sprintf(dirent->name, "%s", '.' == *name ? name + 1 : name);
-        }
-
-        dir_hdl->cursor++;
-
-        return 0;
-}
-
-static int
-elf_readdir_sections(telf_obj *obj,
-                     const char *path,
-                     void *data,
-                     fuse_fill_dir_t fill)
-{
-        int ret;
-        telf_dir_hdl *dir_hdl = NULL;
-        telf_dirent dirent;
-
-        dir_hdl = alloca(sizeof *dir_hdl);
-        if (! dir_hdl) {
-                LOG(LOG_CRIT, 1, "alloca");
-                ret = -1;
-                goto err;
-        }
-
-        memset(&dirent, 0, sizeof dirent);
-        memset(dir_hdl, 0, sizeof *dir_hdl);
-        LOG(LOG_DEBUG, 0, "size=%d, cursor: %d",
-            ctx->n_sections, dir_hdl->cursor);
-
-        while (0 == elf_getdirent_sections(dir_hdl, &dirent)) {
-                if (fill(data, dirent.name, NULL, 0))
-                        break;
-        }
-
-        ret = 0;
-  err:
-        return ret;
-}
-
-static int
-elf_getdirent_section_entries(void *hdl,
-                              telf_dirent *dirent)
 {
         telf_dir_hdl *dir_hdl = hdl;
         char *name = NULL;
@@ -1464,7 +1378,7 @@ elf_getdirent_section_entries(void *hdl,
         if (*name)
                 sprintf(dirent->name, "%s", name);
         else
-                sprintf(dirent->name, ".noname.%p", addr);
+                sprintf(dirent->name, "noname.%p", addr);
 
         dir_hdl->cursor++;
 
@@ -1472,17 +1386,26 @@ elf_getdirent_section_entries(void *hdl,
 }
 
 static int
-elf_readdir_section_entries(telf_obj *obj,
-                            const char *path,
-                            void *data,
-                            fuse_fill_dir_t fill)
+elf_readdir(const char *path,
+            void *data,
+            fuse_fill_dir_t fill,
+            off_t offset,
+            struct fuse_file_info *info)
 {
         int ret;
         int rc;
         telf_dir_hdl *dir_hdl = NULL;
         telf_dirent dirent;
+        telf_obj *obj;
 
         LOG(LOG_DEBUG, 0, "path=%s", path);
+
+        rc = elf_namei(ctx, (char *) path, &obj);
+        if (-1 == rc) {
+                LOG(LOG_ERR, 0, "can't find any object with key '%s'", path);
+                ret = -1;
+                goto err;
+        }
 
         dir_hdl = alloca(sizeof *dir_hdl);
         if (! dir_hdl) {
@@ -1500,7 +1423,7 @@ elf_readdir_section_entries(telf_obj *obj,
                 goto err;
         }
 
-        while (0 == elf_getdirent_section_entries(dir_hdl, &dirent)) {
+        while (0 == elf_readdir_getdirent(dir_hdl, &dirent)) {
                 if (fill(data, dirent.name, NULL, 0))
                         break;
         }
@@ -1509,59 +1432,6 @@ elf_readdir_section_entries(telf_obj *obj,
   err:
         return ret;
 
-}
-
-static int
-elf_readdir_section_other(telf_obj *obj,
-                          const char *path,
-                          void *data,
-                          fuse_fill_dir_t fill)
-{
-        return 0;
-}
-
-static int
-elf_readdir(const char *path,
-            void *data,
-            fuse_fill_dir_t fill,
-            off_t offset,
-            struct fuse_file_info *info)
-{
-        telf_obj *obj = NULL;
-        int ret;
-        int rc;
-
-        rc = elf_namei(ctx, (char *) path, &obj);
-        if (-1 == rc) {
-                LOG(LOG_ERR, 0, "can't find any object with key '%s'", path);
-                ret = -1;
-                goto end;
-        }
-
-        LOG(LOG_DEBUG, 0,"path=%s @%p, type=%s",
-            obj->path, (void *) obj, elf_type_to_str(obj->type));
-
-        int (* cb[])(telf_obj *obj,
-                     const char *path,
-                     void *data,
-                     fuse_fill_dir_t fill) = {
-                [ELF_SECTION]          = elf_readdir_sections,
-                [ELF_SECTION_SYMTAB]   = elf_readdir_section_entries,
-                [ELF_SECTION_DYNSYM]   = elf_readdir_section_entries,
-                [ELF_SECTION_NOBITS]   = elf_readdir_section_other,
-                [ELF_SECTION_PROGBITS] = elf_readdir_section_other,
-                [ELF_SECTION_DYNAMIC]  = elf_readdir_section_other,
-                [ELF_SECTION_HASH]     = elf_readdir_section_other,
-                [ELF_SECTION_NOTE]     = elf_readdir_section_other,
-                [ELF_SECTION_REL]      = elf_readdir_section_other,
-                [ELF_SECTION_RELA]     = elf_readdir_section_other,
-                [ELF_SECTION_STRTAB]   = elf_readdir_section_other,
-                [ELF_ROOTDIR]          = elf_readdir_rootdir,
-        };
-
-        ret = cb[obj->type](obj, path, data, fill);
-  end:
-        return ret;
 }
 
 int
