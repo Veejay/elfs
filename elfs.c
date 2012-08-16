@@ -1094,28 +1094,11 @@ elf_getattr(const char *path,
 
         LOG(LOG_DEBUG, 0, "path=%s, type=%s", obj->path, elf_type_to_str(obj->type));
 
+        /* for now, all the files are directories */
         switch (obj->type) {
-        case ELF_SECTION:
-        case ELF_SECTION_DYNSYM:
-        case ELF_SECTION_SYMTAB:
-        case ELF_SECTION_NOBITS:
-        case ELF_SECTION_PROGBITS:
-        case ELF_SECTION_DYNAMIC:
-        case ELF_SECTION_HASH:
-        case ELF_SECTION_NOTE:
-        case ELF_SECTION_REL:
-        case ELF_SECTION_RELA:
-        case ELF_SECTION_STRTAB:
-        case ELF_SECTION_OTHER:
+        default:
                 st->st_mode = S_IFDIR|S_IRUSR|S_IXUSR;
                 break;
-        case ELF_SYMBOL:
-                st->st_mode = S_IFREG|S_IRUSR;
-                break;
-        default:
-                LOG(LOG_ERR, 0, "impossible switch statement (%d)", obj->type);
-                ret = -1;
-                goto end;
         }
 
         st->st_uid = ctx->st.st_uid;
@@ -1232,95 +1215,27 @@ typedef struct {
 typedef struct elf_dir_hdl {
         void *(*get_entryname_func)(telf_ctx *, struct elf_dir_hdl *, char **);
 
+        telf_obj *obj;
         int cursor;
         int n_entries;
 } telf_dir_hdl;
 
 static void *
-elf_symgetdirentname(telf_ctx *ctx,
-                     telf_dir_hdl *dir_hdl,
-                     char **namep)
+elf_direntname(telf_ctx *ctx,
+               telf_dir_hdl *dir_hdl,
+               char **namep)
 {
         char *name = NULL;
-        Elf64_Sym *sym = NULL;
+        telf_obj *entry = NULL;
 
-        sym = elf_getnsym(ctx, dir_hdl->cursor);
-        if (! sym)
-                return NULL;
-
-        name = elf_symname(ctx, sym);
-        if (! name)
+        entry = list_get_nth(dir_hdl->obj->entries, dir_hdl->cursor);
+        if (! entry)
                 return NULL;
 
         if (namep)
-                *namep = name;
+                *namep = entry->path;
 
-        return (void *) sym;
-}
-
-static void *
-elf_dsymgetdirentname(telf_ctx *ctx,
-                      telf_dir_hdl *dir_hdl,
-                      char **namep)
-{
-        char *name = NULL;
-        Elf64_Sym *sym = NULL;
-
-        sym = elf_getndsym(ctx, dir_hdl->cursor);
-        if (! sym)
-                return NULL;
-
-        name = elf_dsymname(ctx, sym);
-        if (! name)
-                return NULL;
-
-        if (namep)
-                *namep = name;
-
-        return (void *) sym;
-}
-
-static void *
-elf_rootdirgetdirentname(telf_ctx *ctx,
-                         telf_dir_hdl *dir_hdl,
-                         char **namep)
-{
-        char *name = NULL;
-        telf_obj *current = NULL;
-        telf_obj *rootdir = NULL;
-
-        rootdir = list_get(ctx->root, "/");
-        if (! rootdir)
-                return NULL;
-
-        current = list_get_nth(rootdir->entries, dir_hdl->cursor);
-        if (! current)
-                return NULL;
-
-        name = current->path;
-
-        if (namep)
-                *namep = name;
-
-        return (void *) current;
-}
-
-static void *
-elf_sectiondirdirentname(telf_ctx *ctx,
-                         telf_dir_hdl *dir_hdl,
-                         char **namep)
-{
-        char *name = NULL;
-        Elf64_Shdr *shdr = NULL;
-
-        name = elf_getnsectionname(ctx, dir_hdl->cursor);
-        if (! name)
-                return NULL;
-
-        if (namep)
-                *namep = '.' == *name ? name + 1 : name;
-
-        return (void *) elf_getnsection(ctx, dir_hdl->cursor);
+        return entry;
 }
 
 static int
@@ -1328,32 +1243,9 @@ elf_dir_ctor(telf_ctx *ctx,
              telf_obj *obj,
              telf_dir_hdl *dir)
 {
-        int ret;
-
+        dir->obj = obj;
         dir->n_entries = list_get_size(obj->entries);
-
-        switch (obj->type) {
-        case ELF_SECTION_DYNSYM:
-                dir->get_entryname_func = elf_dsymgetdirentname;
-                break;
-        case ELF_SECTION_SYMTAB:
-                dir->get_entryname_func = elf_symgetdirentname;
-                break;
-        case ELF_SECTION:
-                dir->get_entryname_func = elf_sectiondirdirentname;
-                break;
-        case ELF_ROOTDIR:
-                dir->get_entryname_func = elf_rootdirgetdirentname;
-                break;
-        default:
-                LOG(LOG_ERR, 0, "unhandled switched statement (%d)", obj->type);
-                ret = 0;
-                goto end;
-        }
-
-        ret = 0;
-  end:
-        return ret;
+        dir->get_entryname_func = elf_direntname;
 }
 
 static int
@@ -1415,11 +1307,7 @@ elf_readdir(const char *path,
         memset(&dirent, 0, sizeof dirent);
         memset(dir_hdl, 0, sizeof *dir_hdl);
 
-        rc = elf_dir_ctor(ctx, obj, dir_hdl);
-        if (-1 == rc) {
-                ret =- 1;
-                goto err;
-        }
+        elf_dir_ctor(ctx, obj, dir_hdl);
 
         while (0 == elf_readdir_getdirent(dir_hdl, &dirent)) {
                 if (fill(data, dirent.name, NULL, 0))
