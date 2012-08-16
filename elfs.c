@@ -1615,7 +1615,7 @@ main(int argc,
 
         openlog(basename((char *) progname), LOG_CONS | LOG_NOWAIT | LOG_PID, LOG_USER);
 
-        lvl = getenv("ELFFS_LOGLEVEL");
+        lvl = getenv("ELFS_LOGLEVEL");
         if (lvl) {
                 int rc = atopriority(lvl);
                 if (-1 != rc)
