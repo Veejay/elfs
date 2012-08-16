@@ -1330,21 +1330,19 @@ elf_dir_ctor(telf_ctx *ctx,
 {
         int ret;
 
+        dir->n_entries = list_get_size(obj->entries);
+
         switch (obj->type) {
         case ELF_SECTION_DYNSYM:
-                dir->n_entries = ctx->n_dsyms;
                 dir->get_entryname_func = elf_dsymgetdirentname;
                 break;
         case ELF_SECTION_SYMTAB:
-                dir->n_entries = ctx->n_syms;
                 dir->get_entryname_func = elf_symgetdirentname;
                 break;
         case ELF_SECTION:
-                dir->n_entries = ctx->n_sections;
                 dir->get_entryname_func = elf_sectiondirdirentname;
                 break;
         case ELF_ROOTDIR:
-                dir->n_entries = list_get_size(obj->entries);
                 dir->get_entryname_func = elf_rootdirgetdirentname;
                 break;
         default:
