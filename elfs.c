@@ -70,9 +70,132 @@ typedef struct {
         tlist *root; /* list of symbols */
 } telf_ctx;
 
+telf_ctx *ctx = NULL;
+
+static Elf64_Shdr *
+elf_getnsection(telf_ctx *ctx,
+                int n)
+{
+        if (n < 0 || n >= ctx->n_sections)
+                return NULL;
+
+        return ctx->shdr + n;
+}
+
+static char *
+elf_getsectionname(telf_ctx *ctx,
+                   Elf64_Shdr *shdr)
+{
+        Elf64_Shdr *sh_strtab = ctx->shdr + ctx->ehdr->e_shstrndx;
+        char *sh_strtab_p = ctx->addr + sh_strtab->sh_offset;
+
+        return sh_strtab_p + shdr->sh_name;
+}
+
+static char *
+elf_getnsectionname(telf_ctx *ctx,
+                    int n)
+{
+        if (n < 0 || n >= ctx->n_sections)
+                return NULL;
+
+        Elf64_Shdr *sh_strtab = ctx->shdr + ctx->ehdr->e_shstrndx;
+        char *sh_strtab_p = ctx->addr + sh_strtab->sh_offset;
+
+        return sh_strtab_p + ctx->shdr[n].sh_name;
+}
+
+static Elf64_Shdr *
+elf_getsectionbyname(telf_ctx *ctx,
+                     char *name)
+{
+        int i;
+        Elf64_Shdr *shdr = NULL;
+
+        for (i = 0; i < ctx->n_sections; i++) {
+                char *i_name = elf_getnsectionname(ctx, i);
+
+                if (0 == strcmp(i_name, name))
+                        return elf_getnsection(ctx, i);
+        }
+
+        return NULL;
+}
+
+/** return the name of a given static symbol */
+static char *
+elf_symname(telf_ctx *ctx,
+            Elf64_Sym *sym)
+{
+        return &ctx->strtab[sym->st_name];
+}
+
+/** return the name of a given dynamic symbol */
+static char *
+elf_dsymname(telf_ctx *ctx,
+             Elf64_Sym *sym)
+{
+        return &ctx->dstrtab[sym->st_name];
+}
+
+/**  get the n-th static symbol (start at 0) */
+static Elf64_Sym *
+elf_getnsym(telf_ctx *ctx,
+            int n)
+{
+        if (n < 0 || n >= ctx->n_syms)
+                return NULL;
+
+        return ctx->symtab + n;
+}
+
+/**  get the n-th dynamic symbol (start at 0) */
+static Elf64_Sym *
+elf_getndsym(telf_ctx *ctx,
+             int n)
+{
+        if (n < 0 || n >= ctx->n_dsyms)
+                return NULL;
+
+        return ctx->dsymtab + n;
+}
+
+static Elf64_Sym *
+elf_getsymbyname(telf_ctx *ctx,
+                 char *name)
+{
+        int i;
+        Elf64_Sym *sym = NULL;
+
+        for (i = 0; i < ctx->n_syms; i++) {
+                sym = elf_getnsym(ctx, i);
+                if (0 == strcmp(name, elf_symname(ctx, sym)))
+                        goto end;
+        }
+
+        sym = NULL;
+  end:
+        return sym;
+}
+
+static Elf64_Sym *
+elf_getdsymbyname(telf_ctx *ctx,
+                  char *name)
+{
+        int i;
+
+        for (i = 0; i < ctx->n_dsyms; i++) {
+                Elf64_Sym *sym = elf_getndsym(ctx, i);
+                if (0 == strcmp(name, elf_dsymname(ctx, sym)))
+                        return sym;
+        }
+
+        return NULL;
+}
+
 typedef enum {
-        ELF_SECTION_NULL,
-        ELF_SECTION_PROGBITS,
+        ELF_SECTION_NULL,         // 0
+        ELF_SECTION_PROGBITS,     // 1
         ELF_SECTION_SYMTAB,
         ELF_SECTION_STRTAB,
         ELF_SECTION_RELA,
@@ -81,7 +204,7 @@ typedef enum {
         ELF_SECTION_NOTE,
         ELF_SECTION_NOBITS,
         ELF_SECTION_REL,
-        ELF_SECTION_SHLIB,
+        ELF_SECTION_SHLIB,       // 10
         ELF_SECTION_DYNSYM,
         ELF_SECTION_INIT_ARRAY,
         ELF_SECTION_FINI_ARRAY,
@@ -91,7 +214,7 @@ typedef enum {
         ELF_SECTION_NUM,
         ELF_SECTION_LOOS,
         ELF_SECTION_GNU_ATTRIBUTES,
-        ELF_SECTION_GNU_HASH,
+        ELF_SECTION_GNU_HASH,    // 20
         ELF_SECTION_GNU_LIBLIST,
         ELF_SECTION_CHECKSUM,
         ELF_SECTION_LOSUNW,
@@ -101,7 +224,7 @@ typedef enum {
         ELF_SECTION_GNU_verdef,
         ELF_SECTION_GNU_verneed,
         ELF_SECTION_GNU_versym,
-        ELF_SECTION_HISUNW,
+        ELF_SECTION_HISUNW,     // 30
         ELF_SECTION_HIOS,
         ELF_SECTION_LOPROC,
         ELF_SECTION_HIPROC,
@@ -111,8 +234,22 @@ typedef enum {
         ELF_SECTION_OTHER,
         ELF_SECTION,
         ELF_SYMBOL,
+        ELF_SYMBOL_ENTRY,      // 40
         ELF_ROOTDIR,
 } telf_type;
+
+typedef enum {
+        ELF_S_IFDIR,
+        ELF_S_IFREG,
+} telf_ftype;
+
+#define ELF_S_ISDIR(mode) ((mode) == ELF_S_IFDIR)
+#define ELF_S_ISREG(mode) ((mode) == ELF_S_IFREG)
+
+typedef struct {
+        size_t st_size;
+        telf_ftype st_mode;
+} telf_stat;
 
 typedef struct {
         telf_type val;
@@ -161,6 +298,7 @@ telf_map types[] = {
         MAP(ELF_SECTION_OTHER),
         MAP(ELF_SECTION),
         MAP(ELF_SYMBOL),
+        MAP(ELF_SYMBOL_ENTRY),
         MAP(ELF_ROOTDIR),
 #undef MAP
 };
@@ -178,21 +316,214 @@ elf_type_to_str(telf_type type)
         return "impossible";
 }
 
-telf_ctx *ctx = NULL;
-
 typedef struct self_obj {
-        struct self_obj *parent;
-        char *path;
-        telf_type type;
-        tlist *entries;
+        void *driver;            /* set of callbacks */
+        struct self_obj *parent; /* equivalent to ".." */
+
+        char *name;              /* entry name */
+        void *data;              /* a pointer to the symbol for example */
+        telf_type type;          /* type of elf object */
+        telf_stat st;            /* our own struct stat */
+        tlist *entries;          /* if directory: list of entries */
 } telf_obj;
 
+typedef int (* telf_read_func)(telf_obj *, char *, size_t, off_t);
+typedef int (* telf_write_func)(telf_obj *, char *, size_t, off_t);
+
+#define INFO_FMT             \
+        "num: %d\n"          \
+        "value: 0x%p\n"      \
+        "size: %zu\n"        \
+        "type: %s\n"         \
+        "bind: %s\n"         \
+        "vis: %c\n"          \
+        "ndx: %s\n"          \
+        "name: %s\n"
+
+typedef struct {
+        char *content;
+        size_t content_len;
+        telf_read_func read;
+        telf_write_func write;
+} telf_filehdl_driver;
+
+static int
+elf_obj_read_func(telf_obj *obj,
+                  char *buf,
+                  size_t len,
+                  off_t offset)
+{
+        telf_filehdl_driver *driver = obj->driver;
+
+        if (len > driver->content_len)
+                len = driver->content_len;
+
+        memcpy(buf, driver->content + offset, len);
+
+        return len;
+}
+
+static int
+elf_obj_write_func(telf_obj *obj,
+                   char *buf,
+                   size_t buf_len,
+                   off_t offset)
+{
+        return 0;
+}
+
+static telf_filehdl_driver obj_driver = {
+        .content = NULL,
+        .content_len = 0,
+        .read = elf_obj_read_func,
+        .write = elf_obj_write_func,
+};
+
+static char *
+sym_bind_to_str(Elf64_Sym *sym)
+{
+        if (! sym)
+                return "unknown";
+
+        int b = ELF64_ST_BIND(sym->st_info);
+
+        switch (b) {
+#define MAP(x) case STB_##x: return #x
+                MAP(LOCAL);
+                MAP(GLOBAL);
+                MAP(WEAK);
+                MAP(LOPROC);
+                MAP(HIPROC);
+#undef MAP
+        }
+
+        return "impossible";
+}
+
+static char *
+sym_type_to_str(Elf64_Sym *sym)
+{
+        if (! sym)
+                return "unknown";
+
+        int t = ELF64_ST_TYPE(sym->st_info);
+
+        switch (t) {
+#define MAP(x) case STT_##x: return #x
+                MAP(NOTYPE);
+                MAP(OBJECT);
+                MAP(FUNC);
+                MAP(SECTION);
+                MAP(FILE);
+                MAP(LOPROC);
+                MAP(HIPROC);
+#undef MAP
+        }
+
+        return "impossible";
+}
+
+static int
+elf_filehdl_set_content(telf_obj *obj)
+{
+        telf_filehdl_driver *driver = obj->driver;
+        int ret;
+        Elf64_Sym *sym = obj->data;
+
+        // sanity check
+        if (driver->content) {
+                free(driver->content);
+                driver->content = NULL;
+        }
+
+        driver->content = malloc(1024);
+        if (! driver->content) {
+                LOG(LOG_CRIT, 1, "malloc");
+                ret = -1;
+                goto end;
+        }
+
+        driver->content_len = sprintf(driver->content, INFO_FMT,
+                                      0, // num
+                                      sym ? sym : NULL,
+                                      sym ? sym->st_size : 0u,
+                                      sym_type_to_str(sym),
+                                      sym_bind_to_str(sym),
+                                      sym ? sym->st_other : 0u,
+                                      "none", // ndx
+                                      obj->name);
+
+        ret = 0;
+  end:
+        return ret;
+}
+
+static int
+elf_obj_set_content_code_func(telf_obj *obj,
+                              char **bufp,
+                              size_t *buf_lenp)
+{
+        return 0;
+}
+
+static int
+elf_obj_set_content_info_func(telf_obj *obj,
+                              char **bufp,
+                              size_t *buf_lenp)
+{
+        int ret;
+        telf_filehdl_driver *driver = obj->driver;
+        char *buf;
+        size_t buf_len;
+        static const buf_size = 4096;
+        Elf64_Sym *sym = obj->data;
+
+        buf = malloc(buf_size);
+        if (! buf) {
+                LOG(LOG_CRIT, 1, "malloc");
+                ret = -1;
+                goto end;
+        }
+
+        buf_len = snprintf(buf, buf_size, INFO_FMT,
+                           0, // num
+                           sym ? sym : NULL,
+                           sym ? sym->st_size : 0u,
+                           sym_type_to_str(sym),
+                           sym_bind_to_str(sym),
+                           sym ? sym->st_other : 0u,
+                           "none", // ndx
+                           obj->name);
+
+        ret = 0;
+  end:
+
+        if (bufp)
+                *bufp = buf;
+        else
+                free(buf);
+
+        if (buf_lenp)
+                *buf_lenp = buf_len;
+
+        return ret;
+}
+
+typedef int (* tobj_set_content_func)(telf_obj *, char **, size_t *);
+
+struct {
+        char *str;
+        tobj_set_content_func set_content_func;
+} e_names[] = {
+        { .str = "code", .set_content_func = elf_obj_set_content_code_func },
+        { .str = "info", .set_content_func = elf_obj_set_content_info_func },
+};
 
 elf_obj_free(telf_obj *obj)
 {
         if (obj) {
-                if (obj->path)
-                        free(obj->path);
+                if (obj->name)
+                        free(obj->name);
 
                 if (obj->entries)
                         list_free(obj->entries);
@@ -214,9 +545,40 @@ elf_obj_cmp_func(void *key_,
         char *key = key_;
         telf_obj *elem = elem_;
 
-        LOG(LOG_DEBUG, 0, "compare key=%s to entry->path=%s", key, elem->path);
+        LOG(LOG_DEBUG, 0, "compare key=%s to entry->name=%s", key, elem->name);
 
-        return strcmp(key, elem->path);
+        return strcmp(key, elem->name);
+}
+
+static int
+elf_obj_set_content(telf_obj *obj,
+                    char **bufp,
+                    size_t *buf_lenp)
+{
+        int i;
+        int rc;
+        int ret;
+
+        /* for directories, we let their size be 0 */
+        if (ELF_S_ISDIR(obj->st.st_mode))
+                return;
+
+        for (i = 0; i < N_ELEMS(e_names); i++) {
+                if (0 == strcmp(obj->name, e_names[i].str)) {
+                        rc = e_names[i].set_content_func(obj, bufp, buf_lenp);
+                        if (-1 == rc) {
+                                ret = -1;
+                                goto end;
+                        }
+
+                        break;
+                }
+        }
+
+        ret = 0;
+  end:
+
+        return ret;
 }
 
 static telf_obj *
@@ -225,6 +587,7 @@ elf_obj_new(char *path,
             telf_type type)
 {
         telf_obj *obj = NULL;
+        Elf64_Sym *sym = NULL;
 
         LOG(LOG_DEBUG, 0, "build object: path=%s, parent=%p, type=%s",
             path, (void *) parent, elf_type_to_str(type));
@@ -237,14 +600,26 @@ elf_obj_new(char *path,
 
         memset(obj, 0, sizeof *obj);
 
-        obj->path = strdup(path);
-        if (! obj->path) {
+        obj->name = strdup(path);
+        if (! obj->name) {
                 LOG(LOG_CRIT, 1, "strdup(%s)", path);
                 goto err;
         }
 
         obj->parent = parent;
         obj->type = type;
+
+        switch (obj->type) {
+        case ELF_SYMBOL_ENTRY:
+                obj->driver = &obj_driver;
+                obj->st.st_mode = ELF_S_IFREG;
+                break;
+        default:
+                obj->st.st_mode = ELF_S_IFDIR;
+                break;
+        }
+
+        elf_obj_set_content(obj, NULL, &obj->st.st_size);
 
         return obj;
 
@@ -326,8 +701,7 @@ elf_mmap_internal(telf_ctx *ctx)
             (ELFCLASS32 == ctx->class) ? "ELFCLASS32":"ELFCLASS64");
 
         ctx->ehdr = (Elf64_Ehdr *) addr;
-        ctx->shdr = (Elf64_Shdr *) ((char *) addr + ctx->ehdr->e_shoff);
-        ctx->addr = addr;
+        ctx->shdr = (Elf64_Shdr *) (ctx->addr + ctx->ehdr->e_shoff);
 
         LOG(LOG_DEBUG, 0, "elf hdr: %p", addr);
 
@@ -338,56 +712,6 @@ elf_mmap_internal(telf_ctx *ctx)
                 (void) close(fd);
 
         return ret;
-}
-
-static Elf64_Shdr *
-elf_getnsection(telf_ctx *ctx,
-                int n)
-{
-        if (n < 0 || n >= ctx->n_sections)
-                return NULL;
-
-        return ctx->shdr + n;
-}
-
-static char *
-elf_getsectionname(telf_ctx *ctx,
-                   Elf64_Shdr *shdr)
-{
-        Elf64_Shdr *sh_strtab = ctx->shdr + ctx->ehdr->e_shstrndx;
-        char *sh_strtab_p = ctx->addr + sh_strtab->sh_offset;
-
-        return sh_strtab_p + shdr->sh_name;
-}
-
-static char *
-elf_getnsectionname(telf_ctx *ctx,
-                    int n)
-{
-        if (n < 0 || n >= ctx->n_sections)
-                return NULL;
-
-        Elf64_Shdr *sh_strtab = ctx->shdr + ctx->ehdr->e_shstrndx;
-        char *sh_strtab_p = ctx->addr + sh_strtab->sh_offset;
-
-        return sh_strtab_p + ctx->shdr[n].sh_name;
-}
-
-static Elf64_Shdr *
-elf_getsectionbyname(telf_ctx *ctx,
-                     char *name)
-{
-        int i;
-        Elf64_Shdr *shdr = NULL;
-
-        for (i = 0; i < ctx->n_sections; i++) {
-                char *i_name = elf_getnsectionname(ctx, i);
-
-                if (0 == strcmp(i_name, name))
-                        return elf_getnsection(ctx, i);
-        }
-
-        return NULL;
 }
 
 static int
@@ -470,7 +794,7 @@ elf_namei(telf_ctx *ctx,
                 *objp = obj;
 
         if (obj)
-                LOG(LOG_DEBUG, 0, "file obj name found: %s", obj->path);
+                LOG(LOG_DEBUG, 0, "file obj name found: %s", obj->name);
         else
                 LOG(LOG_DEBUG, 0, "file obj name not found");
 
@@ -544,18 +868,19 @@ elf_build_sections(telf_ctx *ctx)
                 telf_type type;
                 char name[128];
                 char *s_name = sh_strtab_p + ctx->shdr[i].sh_name;
+                telf_obj *obj = NULL;
 
                 if (! *s_name) {
                         /* empty name, use the section address */
                         sprintf(name, "noname.%p", sh_strtab + i);
                 } else {
-                        /* we want to convert '.bss', '.data' etc to 'bss', 'data, etc*/
-                        sprintf(name, "%s", '.' == *s_name ? s_name + 1 : s_name);
+                        /* we want to convert '.bss', etc to 'bss', etc*/
+                        sprintf(name, "%s",
+                                '.' == *s_name ? s_name + 1 : s_name);
                 }
 
-#define MAP(x) case SHT_##x: type = ELF_SECTION_##x; break
-
                 switch (ctx->shdr[i].sh_type) {
+#define MAP(x) case SHT_##x: type = ELF_SECTION_##x; break
                         MAP(NULL);
                         MAP(DYNSYM);
                         MAP(SYMTAB);
@@ -567,14 +892,15 @@ elf_build_sections(telf_ctx *ctx)
                         MAP(REL);
                         MAP(RELA);
                         MAP(STRTAB);
+#undef MAP
                 default:
-                        LOG(LOG_ERR, 0, "unknown object type: 0x%x", ctx->shdr[i].sh_type);
+                        LOG(LOG_ERR, 0, "unknown object type: 0x%x",
+                            ctx->shdr[i].sh_type);
                         type = ELF_SECTION_OTHER;
                         break;
                 }
-#undef MAP
-                LOG(LOG_DEBUG, 1, "add section entry: %s", name);
-                telf_obj *obj = elf_obj_new(name, sections_obj, type);
+
+                obj = elf_obj_new(name, sections_obj, type);
                 if (! obj) {
                         ret = -1;
                         goto end;
@@ -588,72 +914,43 @@ elf_build_sections(telf_ctx *ctx)
         return ret;
 }
 
-/** return the name of a given static symbol */
-static char *
-elf_symname(telf_ctx *ctx,
-            Elf64_Sym *sym)
+/**
+ * @ctx the global context
+ * @obj the symtab object
+ */
+static int
+elf_build_generic_file_entries(telf_ctx *ctx,
+                               telf_obj *obj)
 {
-        return &ctx->strtab[sym->st_name];
-}
-
-/** return the name of a given dynamic symbol */
-static char *
-elf_dsymname(telf_ctx *ctx,
-             Elf64_Sym *sym)
-{
-        return &ctx->dstrtab[sym->st_name];
-}
-
-/**  get the n-th static symbol (start at 0) */
-static Elf64_Sym *
-elf_getnsym(telf_ctx *ctx,
-            int n)
-{
-        if (n < 0 || n >= ctx->n_syms)
-                return NULL;
-
-        return ctx->symtab + n;
-}
-
-/**  get the n-th dynamic symbol (start at 0) */
-static Elf64_Sym *
-elf_getndsym(telf_ctx *ctx,
-            int n)
-{
-        if (n < 0 || n >= ctx->n_dsyms)
-                return NULL;
-
-        return ctx->dsymtab + n;
-}
-
-static Elf64_Sym *
-elf_getsymbyname(telf_ctx *ctx,
-                 char *name)
-{
+        int ret;
+        telf_obj *entry = NULL;
         int i;
 
-        for (i = 0; i < ctx->n_syms; i++) {
-                Elf64_Sym *sym = elf_getnsym(ctx, i);
-                if (0 == strcmp(name, elf_symname(ctx, sym)))
-                        return sym;
+        obj->entries = list_new();
+        if (! obj->entries) {
+                LOG(LOG_ERR, 0, "consider this directory as empty...");
+                ret = -1;
+                goto end;
         }
 
-        return NULL;
-}
+        list_set_cmp_func(obj->entries, elf_obj_cmp_func);
+        list_set_free_func(obj->entries, elf_obj_free_func);
 
-static Elf64_Sym *
-elf_getdsymbyname(telf_ctx *ctx,
-                  char *name)
-{
-        int i;
+        for (i = 0; i < N_ELEMS(e_names); i++) {
+                entry = elf_obj_new(e_names[i].str, obj, ELF_SYMBOL_ENTRY);
+                if (! entry) {
+                        LOG(LOG_ERR, 0, "can't build entry '%s'",
+                            e_names[i].str);
+                        continue;
+                }
 
-        for (i = 0; i < ctx->n_dsyms; i++) {
-                Elf64_Sym *sym = elf_getndsym(ctx, i);
-                if (0 == strcmp(name, elf_dsymname(ctx, sym)))
-                        return sym;
+                list_add(obj->entries, entry);
         }
 
-        return NULL;
+
+        ret = 0;
+  end:
+        return ret;
 }
 
 static int
@@ -722,6 +1019,7 @@ elf_build_symtab(telf_ctx *ctx)
                         goto end;
                 }
 
+                (void) elf_build_generic_file_entries(ctx, obj);
                 list_add(symtab_obj->entries, obj);
         }
 
@@ -802,6 +1100,7 @@ elf_build_dynsym(telf_ctx *ctx)
                         goto end;
                 }
 
+                (void) elf_build_generic_file_entries(ctx, obj);
                 list_add(dynsym_obj->entries, obj);
         }
 
@@ -809,7 +1108,7 @@ elf_build_dynsym(telf_ctx *ctx)
                 sym = elf_getndsym(ctx, i);
                 LOG(LOG_DEBUG, 0, "dsym: %s (info:%u, other:%u, shndx:%u, "
                     "value:%p, size:%zu)",
-                    elf_dsymname(ctx, sym), sym->st_info, sym->st_other, 
+                    elf_dsymname(ctx, sym), sym->st_info, sym->st_other,
                     sym->st_shndx, (void *) sym->st_value, sym->st_size);
         }
 
@@ -1092,10 +1391,17 @@ elf_getattr(const char *path,
                 goto end;
         }
 
-        LOG(LOG_DEBUG, 0, "path=%s, type=%s", obj->path, elf_type_to_str(obj->type));
+        LOG(LOG_DEBUG, 0, "path=%s, type=%s", obj->name, elf_type_to_str(obj->type));
 
         /* for now, all the files are directories */
-        switch (obj->type) {
+        switch (obj->st.st_mode) {
+        case ELF_S_IFDIR:
+                st->st_mode = S_IFDIR|S_IRUSR|S_IXUSR;
+                break;
+        case ELF_S_IFREG:
+                st->st_mode = S_IFREG|S_IRUSR|S_IRGRP|S_IROTH;
+                st->st_size = obj->st.st_size;
+                break;
         default:
                 st->st_mode = S_IFDIR|S_IRUSR|S_IXUSR;
                 break;
@@ -1186,8 +1492,46 @@ int
 elf_open(const char *path,
          struct fuse_file_info *info)
 {
+        telf_obj *obj = NULL;
+        int rc;
+        int ret;
+
         LOG(LOG_DEBUG, 0, "path=%s", path);
-        return 0;
+
+        rc = elf_namei(ctx, (char *) path, &obj);
+        if (-1 == rc) {
+                ret = -1;
+                goto end;
+        }
+
+        assert(ELF_SYMBOL_ENTRY == obj->type);
+
+        switch (obj->parent->parent->type) {
+        case ELF_SECTION_SYMTAB:
+                obj->data = elf_getsymbyname(ctx, obj->parent->name);
+                break;
+        case ELF_SECTION_DYNSYM:
+                obj->data = elf_getdsymbyname(ctx, obj->parent->name);
+                break;
+        default:
+                LOG(LOG_ERR, 0, "%s: do not open object with parent type %s",
+                    path, elf_type_to_str(obj->parent->type));
+                ret = -1;
+                break;
+        }
+
+        rc = elf_filehdl_set_content(obj);
+        if (-1 == rc) {
+                LOG(LOG_ERR, 0, "%s: can't set object content", path);
+                ret = -1;
+                goto end;
+        }
+
+        info->fh = (uint64_t) (uintptr_t) obj;
+
+        ret = 0;
+  end:
+        return ret;
 }
 
 int
@@ -1197,8 +1541,36 @@ elf_read(const char *path,
          off_t offset,
          struct fuse_file_info *info)
 {
+        telf_obj *obj = (telf_obj *) info->fh;
+        telf_filehdl_driver *driver = obj->driver;
+        int ret;
+        ssize_t cc;
+
         LOG(LOG_DEBUG, 0, "path=%s", path);
-        return 0;
+
+        if (! obj) {
+                ret = -1;
+                goto end;
+        }
+
+        if (! ELF_S_ISREG(obj->st.st_mode)) {
+                LOG(LOG_ERR, 0, "can't read() into a directory");
+                ret = -1;
+                goto end;
+        }
+
+        cc = driver->read(obj, buf, size, offset);
+        if (-1 == cc) {
+                LOG(LOG_ERR, 0, "%s: can't read %zu bytes @offset: %zd",
+                    path, size, offset);
+                ret = -1;
+                goto end;
+        }
+
+
+        ret = cc;
+  end:
+        return ret;
 }
 
 int
@@ -1233,7 +1605,7 @@ elf_direntname(telf_ctx *ctx,
                 return NULL;
 
         if (namep)
-                *namep = entry->path;
+                *namep = entry->name;
 
         return entry;
 }
@@ -1332,7 +1704,25 @@ int
 elf_release(const char *path,
             struct fuse_file_info *info)
 {
-        return 0;
+        telf_obj *obj = (telf_obj *) info->fh;
+        int ret;
+
+        if (! obj) {
+                LOG(LOG_ERR, 0, "can't release an empty object");
+                ret = -1;
+                goto end;
+        }
+
+        telf_filehdl_driver *driver = obj->driver;
+
+        if (driver->content) {
+                free(driver->content);
+                driver->content = NULL;
+        }
+
+        ret = 0;
+  end:
+        return ret;
 }
 
 int
