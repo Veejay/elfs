@@ -123,6 +123,8 @@ elf_type_to_str(telf_type type)
 
 typedef struct self_obj {
         void *driver;            /* set of callbacks */
+
+        telf_ctx *ctx;           /* global context */
         struct self_obj *parent; /* equivalent to ".." */
 
         char *name;              /* entry name */
@@ -343,7 +345,8 @@ elf_obj_set_content(telf_obj *obj,
 }
 
 static telf_obj *
-elf_obj_new(char *path,
+elf_obj_new(telf_ctx *ctx,
+            char *path,
             telf_obj *parent,
             telf_type type)
 {
@@ -367,6 +370,7 @@ elf_obj_new(char *path,
                 goto err;
         }
 
+        obj->ctx = ctx;
         obj->parent = parent;
         obj->type = type;
 
@@ -567,7 +571,7 @@ elf_build_rootdir(telf_ctx *ctx)
 {
         int ret;
 
-        telf_obj *root_obj = elf_obj_new("/", NULL, ELF_ROOTDIR);
+        telf_obj *root_obj = elf_obj_new(ctx, "/", NULL, ELF_ROOTDIR);
         if (! root_obj) {
                 ret = -1;
                 goto end;
@@ -577,7 +581,7 @@ elf_build_rootdir(telf_ctx *ctx)
         list_set_free_func(root_obj->entries, elf_obj_free_func);
         list_set_cmp_func(root_obj->entries, elf_obj_cmp_func);
 
-        telf_obj *sections_obj = elf_obj_new("sections", root_obj, ELF_SECTION);
+        telf_obj *sections_obj = elf_obj_new(ctx, "sections", root_obj, ELF_SECTION);
         if (! sections_obj) {
                 ret = -1;
                 goto end;
@@ -661,7 +665,7 @@ elf_build_sections(telf_ctx *ctx)
                         break;
                 }
 
-                obj = elf_obj_new(name, sections_obj, type);
+                obj = elf_obj_new(ctx, name, sections_obj, type);
                 if (! obj) {
                         ret = -1;
                         goto end;
@@ -698,7 +702,7 @@ elf_build_generic_file_entries(telf_ctx *ctx,
         list_set_free_func(obj->entries, elf_obj_free_func);
 
         for (i = 0; i < N_ELEMS(e_names); i++) {
-                entry = elf_obj_new(e_names[i].str, obj, ELF_SYMBOL_ENTRY);
+                entry = elf_obj_new(ctx, e_names[i].str, obj, ELF_SYMBOL_ENTRY);
                 if (! entry) {
                         LOG(LOG_ERR, 0, "can't build entry '%s'",
                             e_names[i].str);
@@ -774,7 +778,7 @@ elf_build_symtab(telf_ctx *ctx)
                         sprintf(path, "%s", name);
                 }
 
-                obj = elf_obj_new(path, symtab_obj, ELF_SYMBOL);
+                obj = elf_obj_new(ctx, path, symtab_obj, ELF_SYMBOL);
                 if (! obj) {
                         ret = -1;
                         goto end;
@@ -855,7 +859,7 @@ elf_build_dynsym(telf_ctx *ctx)
                         sprintf(path, "%s", name);
                 }
 
-                obj = elf_obj_new(path, dynsym_obj, ELF_SYMBOL);
+                obj = elf_obj_new(ctx, path, dynsym_obj, ELF_SYMBOL);
                 if (! obj) {
                         ret = -1;
                         goto end;
@@ -1346,16 +1350,16 @@ typedef struct {
 } telf_dirent;
 
 typedef struct elf_dir_hdl {
-        void *(*get_entryname_func)(telf_ctx *, struct elf_dir_hdl *, char **);
+        void *(*get_entryname_func)(struct elf_dir_hdl *, char **);
 
+        telf_ctx *ctx;
         telf_obj *obj;
         int cursor;
         int n_entries;
 } telf_dir_hdl;
 
 static void *
-elf_direntname(telf_ctx *ctx,
-               telf_dir_hdl *dir_hdl,
+elf_direntname(telf_dir_hdl *dir_hdl,
                char **namep)
 {
         char *name = NULL;
@@ -1376,6 +1380,7 @@ elf_dir_ctor(telf_ctx *ctx,
              telf_obj *obj,
              telf_dir_hdl *dir)
 {
+        dir->ctx = ctx;
         dir->cursor = 0;
         dir->obj = obj;
         dir->n_entries = list_get_size(obj->entries);
@@ -1393,7 +1398,7 @@ elf_readdir_getdirent(void *hdl,
         if (dir_hdl->cursor >= dir_hdl->n_entries)
                 return -1;
 
-        addr = dir_hdl->get_entryname_func(ctx, dir_hdl, &name);
+        addr = dir_hdl->get_entryname_func(dir_hdl, &name);
         if (! addr) {
                 LOG(LOG_ERR, 0, "can't get entry name");
                 return -1;
