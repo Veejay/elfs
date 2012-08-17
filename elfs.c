@@ -45,50 +45,62 @@ int loglevel = LOG_ERR;
 
 telf_ctx *ctx = NULL;
 
-typedef enum {
-        ELF_SECTION_NULL,         // 0
-        ELF_SECTION_PROGBITS,     // 1
-        ELF_SECTION_SYMTAB,
-        ELF_SECTION_STRTAB,
-        ELF_SECTION_RELA,
-        ELF_SECTION_HASH,
-        ELF_SECTION_DYNAMIC,
-        ELF_SECTION_NOTE,
-        ELF_SECTION_NOBITS,
-        ELF_SECTION_REL,
-        ELF_SECTION_SHLIB,       // 10
-        ELF_SECTION_DYNSYM,
-        ELF_SECTION_INIT_ARRAY,
-        ELF_SECTION_FINI_ARRAY,
-        ELF_SECTION_PREINIT_ARRAY,
-        ELF_SECTION_GROUP,
-        ELF_SECTION_SYMTAB_SHNDX,
-        ELF_SECTION_NUM,
-        ELF_SECTION_LOOS,
-        ELF_SECTION_GNU_ATTRIBUTES,
-        ELF_SECTION_GNU_HASH,    // 20
-        ELF_SECTION_GNU_LIBLIST,
-        ELF_SECTION_CHECKSUM,
-        ELF_SECTION_LOSUNW,
-        ELF_SECTION_SUNW_move,
-        ELF_SECTION_SUNW_COMDAT,
-        ELF_SECTION_SUNW_syminfo,
-        ELF_SECTION_GNU_verdef,
-        ELF_SECTION_GNU_verneed,
-        ELF_SECTION_GNU_versym,
-        ELF_SECTION_HISUNW,     // 30
-        ELF_SECTION_HIOS,
-        ELF_SECTION_LOPROC,
-        ELF_SECTION_HIPROC,
-        ELF_SECTION_LOUSER,
-        ELF_SECTION_HIUSER,
+#define MAP(v) X(v, #v)
+#define ELF_TYPES_TABLE                                 \
+        MAP(ELF_SECTION_NULL)                           \
+        MAP(ELF_SECTION_PROGBITS)                       \
+        MAP(ELF_SECTION_SYMTAB)                         \
+        MAP(ELF_SECTION_STRTAB)                         \
+        MAP(ELF_SECTION_RELA)                           \
+        MAP(ELF_SECTION_HASH)                           \
+        MAP(ELF_SECTION_DYNAMIC)                        \
+        MAP(ELF_SECTION_NOTE)                           \
+        MAP(ELF_SECTION_NOBITS)                         \
+        MAP(ELF_SECTION_REL)                            \
+        MAP(ELF_SECTION_SHLIB)                          \
+        MAP(ELF_SECTION_DYNSYM)                         \
+        MAP(ELF_SECTION_INIT_ARRAY)                     \
+        MAP(ELF_SECTION_FINI_ARRAY)                     \
+        MAP(ELF_SECTION_PREINIT_ARRAY)                  \
+        MAP(ELF_SECTION_GROUP)                          \
+        MAP(ELF_SECTION_SYMTAB_SHNDX)                   \
+        MAP(ELF_SECTION_NUM)                            \
+        MAP(ELF_SECTION_LOOS)                           \
+        MAP(ELF_SECTION_GNU_ATTRIBUTES)                 \
+        MAP(ELF_SECTION_GNU_HASH)                       \
+        MAP(ELF_SECTION_GNU_LIBLIST)                    \
+        MAP(ELF_SECTION_CHECKSUM)                       \
+        MAP(ELF_SECTION_LOSUNW)                         \
+        MAP(ELF_SECTION_SUNW_move)                      \
+        MAP(ELF_SECTION_SUNW_COMDAT)                    \
+        MAP(ELF_SECTION_SUNW_syminfo)                   \
+        MAP(ELF_SECTION_GNU_verdef)                     \
+        MAP(ELF_SECTION_GNU_verneed)                    \
+        MAP(ELF_SECTION_GNU_versym)                     \
+        MAP(ELF_SECTION_HISUNW)                         \
+        MAP(ELF_SECTION_HIOS)                           \
+        MAP(ELF_SECTION_LOPROC)                         \
+        MAP(ELF_SECTION_HIPROC)                         \
+        MAP(ELF_SECTION_LOUSER)                         \
+        MAP(ELF_SECTION_HIUSER)                         \
+        MAP(ELF_SECTION_OTHER)                          \
+        MAP(ELF_SECTION)                                \
+        MAP(ELF_SYMBOL)                                 \
+        MAP(ELF_SYMBOL_ENTRY)                           \
+        MAP(ELF_ROOTDIR)
 
-        ELF_SECTION_OTHER,
-        ELF_SECTION,
-        ELF_SYMBOL,
-        ELF_SYMBOL_ENTRY,      // 40
-        ELF_ROOTDIR,
+#define X(a, b) a,
+typedef enum {
+        ELF_TYPES_TABLE
 } telf_type;
+#undef X
+
+#define X(a, b) b,
+char *elf_type_names[] = {
+        ELF_TYPES_TABLE
+};
+#undef X
+#undef MAP
 
 typedef enum {
         ELF_S_IFDIR,
@@ -103,69 +115,10 @@ typedef struct {
         telf_ftype st_mode;
 } telf_stat;
 
-typedef struct {
-        telf_type val;
-        char *name;
-} telf_map;
-
-telf_map types[] = {
-#define MAP(x) { .val = x, .name = #x }
-        MAP(ELF_SECTION_NULL),
-        MAP(ELF_SECTION_PROGBITS),
-        MAP(ELF_SECTION_SYMTAB),
-        MAP(ELF_SECTION_STRTAB),
-        MAP(ELF_SECTION_RELA),
-        MAP(ELF_SECTION_HASH),
-        MAP(ELF_SECTION_DYNAMIC),
-        MAP(ELF_SECTION_NOTE),
-        MAP(ELF_SECTION_NOBITS),
-        MAP(ELF_SECTION_REL),
-        MAP(ELF_SECTION_SHLIB),
-        MAP(ELF_SECTION_DYNSYM),
-        MAP(ELF_SECTION_INIT_ARRAY),
-        MAP(ELF_SECTION_FINI_ARRAY),
-        MAP(ELF_SECTION_PREINIT_ARRAY),
-        MAP(ELF_SECTION_GROUP),
-        MAP(ELF_SECTION_SYMTAB_SHNDX),
-        MAP(ELF_SECTION_NUM),
-        MAP(ELF_SECTION_LOOS),
-        MAP(ELF_SECTION_GNU_ATTRIBUTES),
-        MAP(ELF_SECTION_GNU_HASH),
-        MAP(ELF_SECTION_GNU_LIBLIST),
-        MAP(ELF_SECTION_CHECKSUM),
-        MAP(ELF_SECTION_LOSUNW),
-        MAP(ELF_SECTION_SUNW_move),
-        MAP(ELF_SECTION_SUNW_COMDAT),
-        MAP(ELF_SECTION_SUNW_syminfo),
-        MAP(ELF_SECTION_GNU_verdef),
-        MAP(ELF_SECTION_GNU_verneed),
-        MAP(ELF_SECTION_GNU_versym),
-        MAP(ELF_SECTION_HISUNW),
-        MAP(ELF_SECTION_HIOS),
-        MAP(ELF_SECTION_LOPROC),
-        MAP(ELF_SECTION_HIPROC),
-        MAP(ELF_SECTION_LOUSER),
-        MAP(ELF_SECTION_HIUSER),
-
-        MAP(ELF_SECTION_OTHER),
-        MAP(ELF_SECTION),
-        MAP(ELF_SYMBOL),
-        MAP(ELF_SYMBOL_ENTRY),
-        MAP(ELF_ROOTDIR),
-#undef MAP
-};
-
 static char *
 elf_type_to_str(telf_type type)
 {
-        int i;
-
-        for (i = 0; i < N_ELEMS(types); i++) {
-                if (type == types[i].val)
-                        return types[i].name;
-        }
-
-        return "impossible";
+        return elf_type_names[type];
 }
 
 typedef struct self_obj {
