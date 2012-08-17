@@ -178,7 +178,7 @@ static telf_filehdl_driver obj_driver = {
 
 #define INFO_FMT             \
         "num: %d\n"          \
-        "value: 0x%p\n"      \
+        "value: %p\n"        \
         "size: %zu\n"        \
         "type: %s\n"         \
         "bind: %s\n"         \
