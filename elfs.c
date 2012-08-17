@@ -1,18 +1,16 @@
-
 #include <limits.h>
 #include <stdio.h>
 #include <inttypes.h>
 #include <stdbool.h>
-#include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <assert.h>
 #include <sys/statvfs.h>
 #include <libgen.h>
-#include <pthread.h>
 #include <sys/mman.h>
-#include <elf.h>
-#include <libgen.h>
+#include <stdlib.h>
+
+#include <sys/ptrace.h>
 
 #define SYSLOG_NAMES
 #include <syslog.h>
@@ -20,8 +18,8 @@
 #define FUSE_USE_VERSION 29
 #include <fuse.h>
 
-
-#include "list.h"
+#include "elfs.h"
+#include "misc.h"
 
 int loglevel = LOG_ERR;
 
@@ -45,153 +43,7 @@ int loglevel = LOG_ERR;
 
 #define N_ELEMS(x) (sizeof x / sizeof x[0])
 
-typedef struct {
-        int loglevel;
-        pthread_mutex_t mutex;
-        struct stat st;
-        char path[PATH_MAX];
-        unsigned char *addr;
-
-        unsigned char class;    /* ELFCLASS32 or ELFCLASS64 */
-        Elf64_Ehdr *ehdr;       /* elf header */
-        Elf64_Shdr *shdr;       /* sections header */
-        int n_sections;         /* number of sections */
-
-        Elf64_Sym *symtab;      /* symbol table */
-        Elf64_Sym *symtab_end;  /* end of symbol table (symtab + size) */
-        int n_syms;
-        char *strtab;           /* string table */
-
-        Elf64_Sym *dsymtab;     /* dynamic symbol table */
-        Elf64_Sym *dsymtab_end; /* end of dynamic symbol table (dsymtab + size) */
-        int n_dsyms;
-        char *dstrtab;          /* dynamic string table */
-
-        tlist *root; /* list of symbols */
-} telf_ctx;
-
 telf_ctx *ctx = NULL;
-
-static Elf64_Shdr *
-elf_getnsection(telf_ctx *ctx,
-                int n)
-{
-        if (n < 0 || n >= ctx->n_sections)
-                return NULL;
-
-        return ctx->shdr + n;
-}
-
-static char *
-elf_getsectionname(telf_ctx *ctx,
-                   Elf64_Shdr *shdr)
-{
-        Elf64_Shdr *sh_strtab = ctx->shdr + ctx->ehdr->e_shstrndx;
-        char *sh_strtab_p = ctx->addr + sh_strtab->sh_offset;
-
-        return sh_strtab_p + shdr->sh_name;
-}
-
-static char *
-elf_getnsectionname(telf_ctx *ctx,
-                    int n)
-{
-        if (n < 0 || n >= ctx->n_sections)
-                return NULL;
-
-        Elf64_Shdr *sh_strtab = ctx->shdr + ctx->ehdr->e_shstrndx;
-        char *sh_strtab_p = ctx->addr + sh_strtab->sh_offset;
-
-        return sh_strtab_p + ctx->shdr[n].sh_name;
-}
-
-static Elf64_Shdr *
-elf_getsectionbyname(telf_ctx *ctx,
-                     char *name)
-{
-        int i;
-        Elf64_Shdr *shdr = NULL;
-
-        for (i = 0; i < ctx->n_sections; i++) {
-                char *i_name = elf_getnsectionname(ctx, i);
-
-                if (0 == strcmp(i_name, name))
-                        return elf_getnsection(ctx, i);
-        }
-
-        return NULL;
-}
-
-/** return the name of a given static symbol */
-static char *
-elf_symname(telf_ctx *ctx,
-            Elf64_Sym *sym)
-{
-        return &ctx->strtab[sym->st_name];
-}
-
-/** return the name of a given dynamic symbol */
-static char *
-elf_dsymname(telf_ctx *ctx,
-             Elf64_Sym *sym)
-{
-        return &ctx->dstrtab[sym->st_name];
-}
-
-/**  get the n-th static symbol (start at 0) */
-static Elf64_Sym *
-elf_getnsym(telf_ctx *ctx,
-            int n)
-{
-        if (n < 0 || n >= ctx->n_syms)
-                return NULL;
-
-        return ctx->symtab + n;
-}
-
-/**  get the n-th dynamic symbol (start at 0) */
-static Elf64_Sym *
-elf_getndsym(telf_ctx *ctx,
-             int n)
-{
-        if (n < 0 || n >= ctx->n_dsyms)
-                return NULL;
-
-        return ctx->dsymtab + n;
-}
-
-static Elf64_Sym *
-elf_getsymbyname(telf_ctx *ctx,
-                 char *name)
-{
-        int i;
-        Elf64_Sym *sym = NULL;
-
-        for (i = 0; i < ctx->n_syms; i++) {
-                sym = elf_getnsym(ctx, i);
-                if (0 == strcmp(name, elf_symname(ctx, sym)))
-                        goto end;
-        }
-
-        sym = NULL;
-  end:
-        return sym;
-}
-
-static Elf64_Sym *
-elf_getdsymbyname(telf_ctx *ctx,
-                  char *name)
-{
-        int i;
-
-        for (i = 0; i < ctx->n_dsyms; i++) {
-                Elf64_Sym *sym = elf_getndsym(ctx, i);
-                if (0 == strcmp(name, elf_dsymname(ctx, sym)))
-                        return sym;
-        }
-
-        return NULL;
-}
 
 typedef enum {
         ELF_SECTION_NULL,         // 0
@@ -330,16 +182,6 @@ typedef struct self_obj {
 typedef int (* telf_read_func)(telf_obj *, char *, size_t, off_t);
 typedef int (* telf_write_func)(telf_obj *, char *, size_t, off_t);
 
-#define INFO_FMT             \
-        "num: %d\n"          \
-        "value: 0x%p\n"      \
-        "size: %zu\n"        \
-        "type: %s\n"         \
-        "bind: %s\n"         \
-        "vis: %c\n"          \
-        "ndx: %s\n"          \
-        "name: %s\n"
-
 typedef struct {
         char *content;
         size_t content_len;
@@ -379,49 +221,15 @@ static telf_filehdl_driver obj_driver = {
         .write = elf_obj_write_func,
 };
 
-static char *
-sym_bind_to_str(Elf64_Sym *sym)
-{
-        if (! sym)
-                return "unknown";
-
-        int b = ELF64_ST_BIND(sym->st_info);
-
-        switch (b) {
-#define MAP(x) case STB_##x: return #x
-                MAP(LOCAL);
-                MAP(GLOBAL);
-                MAP(WEAK);
-                MAP(LOPROC);
-                MAP(HIPROC);
-#undef MAP
-        }
-
-        return "impossible";
-}
-
-static char *
-sym_type_to_str(Elf64_Sym *sym)
-{
-        if (! sym)
-                return "unknown";
-
-        int t = ELF64_ST_TYPE(sym->st_info);
-
-        switch (t) {
-#define MAP(x) case STT_##x: return #x
-                MAP(NOTYPE);
-                MAP(OBJECT);
-                MAP(FUNC);
-                MAP(SECTION);
-                MAP(FILE);
-                MAP(LOPROC);
-                MAP(HIPROC);
-#undef MAP
-        }
-
-        return "impossible";
-}
+#define INFO_FMT             \
+        "num: %d\n"          \
+        "value: 0x%p\n"      \
+        "size: %zu\n"        \
+        "type: %s\n"         \
+        "bind: %s\n"         \
+        "vis: %c\n"          \
+        "ndx: %s\n"          \
+        "name: %s\n"
 
 static int
 elf_filehdl_set_content(telf_obj *obj)
@@ -1508,10 +1316,10 @@ elf_open(const char *path,
 
         switch (obj->parent->parent->type) {
         case ELF_SECTION_SYMTAB:
-                obj->data = elf_getsymbyname(ctx, obj->parent->name);
+                obj->data = (void *) elf_getsymbyname(ctx, obj->parent->name);
                 break;
         case ELF_SECTION_DYNSYM:
-                obj->data = elf_getdsymbyname(ctx, obj->parent->name);
+                obj->data = (void *) elf_getdsymbyname(ctx, obj->parent->name);
                 break;
         default:
                 LOG(LOG_ERR, 0, "%s: do not open object with parent type %s",
