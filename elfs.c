@@ -1158,7 +1158,6 @@ elf_getattr(const char *path,
 
         LOG(LOG_DEBUG, 0, "path=%s, type=%s", obj->name, elf_type_to_str(obj->type));
 
-        /* for now, all the files are directories */
         switch (obj->st.st_mode) {
         case ELF_S_IFDIR:
                 st->st_mode = S_IFDIR|S_IRUSR|S_IXUSR;
@@ -1364,13 +1363,28 @@ elf_direntname(telf_dir_hdl *dir_hdl,
 {
         char *name = NULL;
         telf_obj *entry = NULL;
+        static char *dots[] = { ".", ".." };
 
-        entry = list_get_nth(dir_hdl->obj->entries, dir_hdl->cursor);
-        if (! entry)
-                return NULL;
+        switch (dir_hdl->cursor) {
+        case 0: /* handle "." */
+                entry = dir_hdl->obj;
+                name = dots[dir_hdl->cursor];
+                break;
+        case 1: /* handle ".." */
+                entry = dir_hdl->obj->parent;
+                name = dots[dir_hdl->cursor];
+                break;
+        default: /* handle ordinary entry... */
+                entry = list_get_nth(dir_hdl->obj->entries, dir_hdl->cursor - 2);
+                if (! entry)
+                        goto end;
 
+                name = entry->name;
+        }
+
+  end:
         if (namep)
-                *namep = entry->name;
+                *namep = name;
 
         return entry;
 }
@@ -1383,7 +1397,7 @@ elf_dir_ctor(telf_ctx *ctx,
         dir->ctx = ctx;
         dir->cursor = 0;
         dir->obj = obj;
-        dir->n_entries = list_get_size(obj->entries);
+        dir->n_entries = list_get_size(obj->entries) + 2; // for "." and ".."
         dir->get_entryname_func = elf_direntname;
 }
 
@@ -1395,11 +1409,11 @@ elf_readdir_getdirent(void *hdl,
         char *name = NULL;
         void *addr =  NULL;
 
-        if (dir_hdl->cursor >= dir_hdl->n_entries)
+        if (dir_hdl->cursor >= dir_hdl->n_entries + 2)
                 return -1;
 
         addr = dir_hdl->get_entryname_func(dir_hdl, &name);
-        if (! addr) {
+        if (! name) {
                 LOG(LOG_ERR, 0, "can't get entry name");
                 return -1;
         }
