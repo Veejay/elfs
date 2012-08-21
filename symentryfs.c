@@ -28,7 +28,6 @@ elf_obj_set_content_code_func(telf_obj *obj,
         telf_symentry_content *content = obj->data;
         Elf64_Sym *sym = obj->parent->data;
         Elf64_Shdr *shdr = obj->ctx->shdr + sym->st_shndx;
-        char *symname = NULL;
 
         // sanity check
         if (content->buf) {
@@ -36,7 +35,16 @@ elf_obj_set_content_code_func(telf_obj *obj,
                 content->buf = NULL;
         }
 
+        content->buf_len = sym->st_size;
+
         ret = ELF_SUCCESS;
+  end:
+        if (bufp)
+                *bufp = content->buf;
+
+        if (buf_lenp)
+                *buf_lenp = content->buf_len;
+
         return ret;
 }
 
