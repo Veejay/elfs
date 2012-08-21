@@ -164,3 +164,4 @@ sym_type_to_str(Elf64_Sym *sym)
 
         return "impossible";
 }
+

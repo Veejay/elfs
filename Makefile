@@ -7,10 +7,7 @@ CC=gcc
 DESTDIR=/usr/local
 BINDIR=${DESTDIR}/bin
 
-SRC=	elfs.c \
-	misc.c \
-	list.c
-
+SRC=$(wildcard *.c)
 OBJS=$(SRC:.c=.o)
 
 COMMON_CFLAGS=-D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE
