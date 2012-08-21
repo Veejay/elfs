@@ -461,7 +461,7 @@ elf_fs_read(const char *path,
         if (rc != ELF_SUCCESS) {
                 LOG(LOG_ERR, 0, "%s: can't read %zu bytes @offset: %zd: %s",
                     path, size, offset, elf_status_to_str(rc));
-                ret = ELF_EIO;
+                ret = -EIO;
                 goto end;
         }
 
@@ -498,7 +498,7 @@ elf_fs_write(const char *path,
         if (ELF_SUCCESS != rc) {
                 LOG(LOG_ERR, 0, "%s: can't write %zu bytes @offset: %zd: %s",
                     path, size, offset, elf_status_to_str(rc));
-                ret = ELF_EIO;
+                ret = -EIO;
                 goto end;
         }
 
