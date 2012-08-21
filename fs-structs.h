@@ -41,7 +41,7 @@ typedef enum {
 } telf_open_flags;
 
 typedef enum {
-        ELF_SUCCESS = 0,
+        ELF_SUCCESS =  0,
         ELF_FAILURE = -1,
         ELF_ENOENT  = -2,
         ELF_EIO     = -3,
@@ -52,8 +52,8 @@ typedef enum {
 typedef telf_status (* telf_fs_getattr)(void *obj, telf_stat *st);
 typedef telf_status (* telf_fs_open)(char *name, telf_open_flags flags, void **objp);
 typedef telf_status (* telf_fs_release)(void *obj);
-typedef telf_status (* telf_fs_read)(void *obj, char *buf, size_t size, off_t offset, size_t *);
-typedef telf_status (* telf_fs_write)(void *obj, const char *buf, size_t size, off_t offset, size_t *);
+typedef telf_status (* telf_fs_read)(void *obj, char *buf, size_t size, off_t offset, ssize_t *sizep);
+typedef telf_status (* telf_fs_write)(void *obj, const char *buf, size_t size, off_t offset, ssize_t *sizep);
 /* directory */
 typedef telf_status (* telf_fs_opendir)(char *name, void **objp);
 typedef telf_status (* telf_fs_readdir)(void *obj, void *data, fuse_fill_dir_t fill);

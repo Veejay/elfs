@@ -8,7 +8,6 @@
 #include "misc.h"
 #include "elfs.h"
 #include "defaultfs.h"
-#include "misc.h"
 
 telf_ctx *ctx;
 
@@ -25,7 +24,7 @@ elf_obj_set_content_code_func(telf_obj *obj,
                               char **bufp,
                               size_t *buf_lenp)
 {
-        int ret;
+        telf_status ret;
         telf_symentry_content *content = obj->data;
         Elf64_Sym *sym = obj->parent->data;
         Elf64_Shdr *shdr = obj->ctx->shdr + sym->st_shndx;
@@ -107,7 +106,7 @@ elf_obj_set_content_info_func(telf_obj *obj,
         return ret;
 }
 
-typedef int (* tobj_set_content_func)(telf_obj *, char **, size_t *);
+typedef telf_status (* tobj_set_content_func)(telf_obj *, char **, size_t *);
 
 struct {
         char *str;
@@ -143,7 +142,6 @@ elf_obj_set_content(telf_obj *obj,
 
         return ret;
 }
-
 
 
 
@@ -247,10 +245,11 @@ symentryfs_read(void *obj_hdl,
                 char *buf,
                 size_t size,
                 off_t offset,
-                size_t *sizep)
+                ssize_t *sizep)
 {
         telf_obj *obj = obj_hdl;
         telf_symentry_content *content = obj->data;
+        telf_status ret;
 
         if (size > content->buf_len)
                 size = content->buf_len;
@@ -270,7 +269,7 @@ symentryfs_write(void *obj,
                  const char *buf,
                  size_t size,
                  off_t offset,
-                 size_t *sizep)
+                 ssize_t *sizep)
 {
         return ELF_SUCCESS;
 }
@@ -314,10 +313,6 @@ telf_fs_driver symentryfs_driver = {
 };
 
 
-/**
- * @ctx the global context
- * @obj the symtab object
- */
 telf_status
 symentryfs_build(telf_ctx *ctx,
                  telf_obj *parent)
@@ -341,7 +336,7 @@ symentryfs_build(telf_ctx *ctx,
                 entry = elf_obj_new(ctx, e_names[i].str, parent, ELF_SYMBOL_ENTRY);
                 if (! entry) {
                         LOG(LOG_ERR, 0, "can't build entry '%s'",
-                        e_names[i].str);
+                            e_names[i].str);
                         continue;
                 }
 

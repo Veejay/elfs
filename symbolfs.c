@@ -15,7 +15,7 @@ telf_ctx *ctx;
 static telf_status
 symbolfs_symtab_build(telf_ctx *ctx)
 {
-        telf_status ret;;
+        telf_status ret;
         telf_status rc;
         int i;
         telf_obj *symtab_obj = NULL;
@@ -25,9 +25,9 @@ symbolfs_symtab_build(telf_ctx *ctx)
 
         rc = elf_namei(ctx, "/sections/symtab", &symtab_obj);
         if (ELF_SUCCESS != rc) {
-                LOG(LOG_ERR, 0, "can't symtab section: '%s'",
+                LOG(LOG_ERR, 0, "can't find '/section/symtab': %s",
                     elf_status_to_str(rc));
-                ret = rc;
+                ret = ELF_ENOENT;
                 goto end;
         }
 
@@ -47,7 +47,7 @@ symbolfs_symtab_build(telf_ctx *ctx)
         }
 
         if (! ctx->n_syms) {
-                ret = 0;
+                ret = ELF_SUCCESS;
                 goto end;
         }
 
@@ -73,12 +73,15 @@ symbolfs_symtab_build(telf_ctx *ctx)
 
                 obj = elf_obj_new(ctx, path, symtab_obj, ELF_SYMBOL);
                 if (! obj) {
-                        ret = -1;
+                        LOG(LOG_ERR, 0, "object creation '%s' failed", path);
+                        ret = ELF_FAILURE;
                         goto end;
                 }
 
                 rc = symentryfs_build(ctx, obj);
                 if (ELF_SUCCESS != rc) {
+                        LOG(LOG_ERR, 0, "symentryfs creation failed: %s",
+                            elf_status_to_str(rc));
                         ret = rc;
                         goto end;
                 }
@@ -107,7 +110,7 @@ symbolfs_dynsym_build(telf_ctx *ctx)
 
         rc = elf_namei(ctx, "/sections/dynsym", &dynsym_obj);
         if (ELF_SUCCESS != rc) {
-                LOG(LOG_ERR, 0, "can't find dynsym section: %s'",
+                LOG(LOG_ERR, 0, "can not find '/sections/dynsym': %s",
                     elf_status_to_str(rc));
                 ret = rc;
                 goto end;
@@ -130,7 +133,7 @@ symbolfs_dynsym_build(telf_ctx *ctx)
         }
 
         if (! ctx->n_dsyms) {
-                ret = 0;
+                ret = ELF_SUCCESS;
                 goto end;
         }
 
@@ -156,13 +159,14 @@ symbolfs_dynsym_build(telf_ctx *ctx)
 
                 obj = elf_obj_new(ctx, path, dynsym_obj, ELF_SYMBOL);
                 if (! obj) {
-                        ret = -1;
+                        LOG(LOG_ERR, 0, "object creation '%s' failed", path);
+                        ret = ELF_FAILURE;
                         goto end;
                 }
 
                 rc = symentryfs_build(ctx, obj);
                 if (ELF_SUCCESS != rc) {
-                        LOG(LOG_ERR, 0, "symbol entry build failure: %s",
+                        LOG(LOG_ERR, 0, "symentryfs creation failed: %s",
                             elf_status_to_str(rc));
                         ret = rc;
                         goto end;

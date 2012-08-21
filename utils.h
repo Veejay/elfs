@@ -5,10 +5,4 @@
 
 char *elf_status_to_str(telf_status st);
 
-
-
-#ifdef __cplusplus
-}
-#endif
-
 #endif /* UTILS_H */

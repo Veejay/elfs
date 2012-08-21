@@ -23,6 +23,7 @@
 #include "sectionfs.h"
 #include "fsapi.h"
 
+
 telf_ctx *ctx = NULL;
 
 
@@ -86,6 +87,7 @@ elf_type_to_str(telf_type type)
         return elf_type_names[type];
 }
 
+static void
 elf_obj_free(telf_obj *obj)
 {
         if (obj) {
@@ -216,13 +218,13 @@ elf_sanity_check(unsigned char *addr)
 
         if (strncmp(addr, ELFMAG, SELFMAG)) {
                 LOG(LOG_ERR, 0, "bad magic: %*s", SELFMAG, addr);
-                ret = -EIO;
+                ret = ELF_FAILURE;
                 goto end;
         }
 
         if (ELFCLASSNONE == addr + EI_CLASS) {
                 LOG(LOG_ERR, 0, "bad elf class %c", addr[EI_CLASS]);
-                ret = -EIO;
+                ret = ELF_FAILURE;
                 goto end;
         }
 
@@ -242,14 +244,14 @@ elf_mmap_internal(telf_ctx *ctx)
         fd = open(ctx->path, 0600, O_RDONLY);
         if (-1 == fd) {
                 LOG(LOG_ERR, 0, "open '%s': %s", ctx->path, strerror(errno));
-                ret = -1;
+                ret = ELF_FAILURE;
                 goto err;
         }
 
         addr = mmap(NULL, ctx->st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
         if (MAP_FAILED == addr) {
                 LOG(LOG_ERR, 0, "mmap: %s", strerror(errno));
-                ret = -1;
+                ret = ELF_FAILURE;
                 goto err;
         }
 
@@ -257,8 +259,9 @@ elf_mmap_internal(telf_ctx *ctx)
 
         rc = elf_sanity_check(ctx->addr);
         if (ELF_SUCCESS != rc) {
-                LOG(LOG_ERR, 0, "sanity checks failed");
-                ret = -EIO;
+                LOG(LOG_ERR, 0, "sanity checks failed: %s",
+                    elf_status_to_str(rc));
+                ret = ELF_FAILURE;
                 goto err;
         }
 

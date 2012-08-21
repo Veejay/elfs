@@ -6,6 +6,4 @@
 
 telf_status symbolfs_build(telf_ctx *ctx);
 
-telf_fs_driver symbolfs_driver;
-
 #endif /* SYMBOLFS_H */

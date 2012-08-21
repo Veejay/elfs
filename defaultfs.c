@@ -25,7 +25,7 @@ defaultfs_getattr(void *obj_hdl,
         return ELF_SUCCESS;
 }
 
-int
+telf_status
 defaultfs_open(char *path,
                telf_open_flags flags,
                void **objp)
@@ -33,28 +33,28 @@ defaultfs_open(char *path,
         return ELF_SUCCESS;
 }
 
-int
+telf_status
 defaultfs_release(void *obj)
 {
         return ELF_SUCCESS;
 }
 
-int
+telf_status
 defaultfs_read(void *obj,
                char *buf,
                size_t size,
                off_t offset,
-               size_t *sizep)
+               ssize_t *sizep)
 {
         return ELF_SUCCESS;
 }
 
-int
+telf_status
 defaultfs_write(void *obj,
                 const char *buf,
                 size_t size,
                 off_t offset,
-                size_t *sizep)
+                ssize_t *sizep)
 {
         return ELF_SUCCESS;
 }
@@ -64,7 +64,7 @@ defaultfs_write(void *obj,
 /* directory */
 
 
-int
+telf_status
 defaultfs_opendir(char *path,
                   void **objp)
 {
@@ -155,13 +155,13 @@ readdir_getdirent(void *hdl,
         return ELF_SUCCESS;
 }
 
-int
+telf_status
 defaultfs_readdir(void *obj_hdl,
                   void *data,
                   fuse_fill_dir_t fill)
 {
         telf_obj *obj = obj_hdl;
-        int ret;
+        telf_status ret;
         int rc;
         telf_dir_hdl *dir_hdl = NULL;
         telf_dirent dirent;
@@ -169,7 +169,7 @@ defaultfs_readdir(void *obj_hdl,
         dir_hdl = alloca(sizeof *dir_hdl);
         if (! dir_hdl) {
                 LOG(LOG_ERR, 0, "alloca: %s", strerror(errno));
-                ret = -1;
+                ret = ELF_ENOMEM;
                 goto err;
         }
 
@@ -182,12 +182,12 @@ defaultfs_readdir(void *obj_hdl,
                         break;
         }
 
-        ret = 0;
+        ret = ELF_SUCCESS;
   err:
         return ret;
 }
 
-int
+telf_status
 defaultfs_releasedir(void *obj)
 {
         return ELF_SUCCESS;

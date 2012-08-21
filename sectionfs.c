@@ -28,20 +28,20 @@ sectionfs_build(telf_ctx *ctx)
 
         rc = elf_namei(ctx, "/sections", &sections_obj);
         if (ELF_SUCCESS != rc) {
-                LOG(LOG_ERR, 0, "can't find section entry: %s",
+                LOG(LOG_ERR, 0, "can't find any section entry: %s",
                     elf_status_to_str(rc));
-                ret = rc;
+                ret = ELF_ENOENT;
                 goto end;
         }
 
         ctx->n_sections = ctx->ehdr->e_shnum;
 
         if (! ctx->n_sections)
-                return 0;
+                return ELF_SUCCESS;
 
         rc = elf_obj_list_new(sections_obj);
         if (ELF_SUCCESS != rc) {
-                LOG(LOG_ERR, 0, "entries creation failed: %s",
+                LOG(LOG_ERR, 0, "section entries creation failed: %s",
                     elf_status_to_str(rc));
                 ret = rc;
                 goto end;
@@ -87,17 +87,8 @@ sectionfs_build(telf_ctx *ctx)
                 obj = elf_obj_new(ctx, name, sections_obj, type);
                 if (! obj) {
                         LOG(LOG_ERR, 0, "obj '%s' creation failed", name);
-                        ret = -1;
+                        ret = ELF_FAILURE;
                         goto end;
-                }
-
-                switch (type) {
-                case ELF_SECTION_DYNSYM:
-                case ELF_SECTION_SYMTAB:
-                        obj->driver = symbolfs_driver;
-                        break;
-                default:
-                        break;
                 }
 
                 list_add(sections_obj->entries, obj);
