@@ -11,9 +11,9 @@ telf_ctx *ctx;
 /* file */
 
 
-int
+telf_status
 defaultfs_getattr(void *obj_hdl,
-               telf_stat *st)
+                  telf_stat *st)
 {
         LOG(LOG_DEBUG, 0, "here");
 
@@ -22,39 +22,41 @@ defaultfs_getattr(void *obj_hdl,
         st->st_nlink = 1;
         st->st_mode = ELF_S_IFDIR | ELF_S_IRWXU;
 
-        return 0;
+        return ELF_SUCCESS;
 }
 
 int
 defaultfs_open(char *path,
-            telf_open_flags flags,
-            void **objp)
+               telf_open_flags flags,
+               void **objp)
 {
-        return 0;
+        return ELF_SUCCESS;
 }
 
 int
 defaultfs_release(void *obj)
 {
-        return 0;
+        return ELF_SUCCESS;
 }
 
 int
 defaultfs_read(void *obj,
-            char *buf,
-            size_t size,
-            off_t offset)
+               char *buf,
+               size_t size,
+               off_t offset,
+               size_t *sizep)
 {
-        return 0;
+        return ELF_SUCCESS;
 }
 
 int
 defaultfs_write(void *obj,
-             const char *buf,
-             size_t size,
-             off_t offset)
+                const char *buf,
+                size_t size,
+                off_t offset,
+                size_t *sizep)
 {
-        return 0;
+        return ELF_SUCCESS;
 }
 
 
@@ -64,9 +66,9 @@ defaultfs_write(void *obj,
 
 int
 defaultfs_opendir(char *path,
-               void **objp)
+                  void **objp)
 {
-        return 0;
+        return ELF_SUCCESS;
 }
 
 typedef struct {
@@ -117,7 +119,7 @@ direntname(telf_dir_hdl *dir_hdl,
 static int
 dir_ctor(telf_ctx *ctx,
          telf_obj *obj,
-             telf_dir_hdl *dir)
+         telf_dir_hdl *dir)
 {
         dir->ctx = ctx;
         dir->cursor = 0;
@@ -150,13 +152,13 @@ readdir_getdirent(void *hdl,
 
         dir_hdl->cursor++;
 
-        return 0;
+        return ELF_SUCCESS;
 }
 
 int
 defaultfs_readdir(void *obj_hdl,
-               void *data,
-               fuse_fill_dir_t fill)
+                  void *data,
+                  fuse_fill_dir_t fill)
 {
         telf_obj *obj = obj_hdl;
         int ret;
@@ -188,7 +190,7 @@ defaultfs_readdir(void *obj_hdl,
 int
 defaultfs_releasedir(void *obj)
 {
-        return 0;
+        return ELF_SUCCESS;
 }
 
 

@@ -3,8 +3,7 @@
 
 #include "elfs.h"
 
-int
-rootfs_build(telf_ctx *ctx);
+telf_status rootfs_build(telf_ctx *ctx);
 
 
 

@@ -3,7 +3,6 @@
 
 #include "elfs.h"
 
-int
-sectionfs_build(telf_ctx *ctx);
+telf_status sectionfs_build(telf_ctx *ctx);
 
 #endif /* SECTIONFS_H */

@@ -13,28 +13,31 @@ extern telf_ctx *ctx;
 
 /* root directory object creation */
 
-int
+telf_status
 rootfs_build(telf_ctx *ctx)
 {
-        int rc;
+        telf_status rc, ret;
         telf_obj *root_obj = NULL;
         telf_obj *sections_obj = NULL;
 
         root_obj = elf_obj_new(ctx, "/", NULL, ELF_ROOTDIR);
         if (! root_obj) {
                 LOG(LOG_ERR, 0, "root obj creation failed");
+                ret = ELF_FAILURE;
                 goto err;
         }
 
         rc = elf_obj_list_new(root_obj);
-        if (-1 == rc) {
-                LOG(LOG_ERR, 0, "entries creation failed");
+        if (ELF_SUCCESS != rc) {
+                LOG(LOG_ERR, 0, "list failed: %s", elf_status_to_str(rc));
+                ret = ELF_FAILURE;
                 goto err;
         }
 
         sections_obj = elf_obj_new(ctx, "sections", root_obj, ELF_SECTION);
         if (! sections_obj) {
                 LOG(LOG_ERR, 0, "section obj creation failed");
+                ret = ELF_FAILURE;
                 goto err;
         }
 
@@ -48,7 +51,7 @@ rootfs_build(telf_ctx *ctx)
         /* and finally... */
         ctx->root = root_obj;
 
-        return 0;
+        return ELF_SUCCESS;
   err:
         if (sections_obj)
                 elf_obj_free(sections_obj);
@@ -56,6 +59,6 @@ rootfs_build(telf_ctx *ctx)
         if (root_obj)
                 elf_obj_free(root_obj);
 
-        return -1;
+        return ret;
 }
 

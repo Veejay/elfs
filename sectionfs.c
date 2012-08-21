@@ -15,11 +15,11 @@ extern telf_ctx *ctx;
 
 /* section directory object creation */
 
-int
+telf_status
 sectionfs_build(telf_ctx *ctx)
 {
-        int ret;
-        int rc;
+        telf_status ret;
+        telf_status rc;
         int i;
         telf_obj *sections_obj = NULL;
 
@@ -27,9 +27,10 @@ sectionfs_build(telf_ctx *ctx)
         char *sh_strtab_p = ctx->addr + sh_strtab->sh_offset;
 
         rc = elf_namei(ctx, "/sections", &sections_obj);
-        if (-1 == rc) {
-                LOG(LOG_ERR, 0, "can't find any section entry");
-                ret = -1;
+        if (ELF_SUCCESS != rc) {
+                LOG(LOG_ERR, 0, "can't find section entry: %s",
+                    elf_status_to_str(rc));
+                ret = rc;
                 goto end;
         }
 
@@ -39,9 +40,10 @@ sectionfs_build(telf_ctx *ctx)
                 return 0;
 
         rc = elf_obj_list_new(sections_obj);
-        if (-1 == rc) {
-                LOG(LOG_ERR, 0, "section entries creation failed");
-                ret = -1;
+        if (ELF_SUCCESS != rc) {
+                LOG(LOG_ERR, 0, "entries creation failed: %s",
+                    elf_status_to_str(rc));
+                ret = rc;
                 goto end;
         }
 
@@ -101,7 +103,7 @@ sectionfs_build(telf_ctx *ctx)
                 list_add(sections_obj->entries, obj);
         }
 
-        ret = 0;
+        ret = ELF_SUCCESS;
   end:
         return ret;
 }

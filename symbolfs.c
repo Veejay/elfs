@@ -12,11 +12,11 @@
 telf_ctx *ctx;
 
 
-static int
+static telf_status
 symbolfs_symtab_build(telf_ctx *ctx)
 {
-        int ret;
-        int rc;
+        telf_status ret;;
+        telf_status rc;
         int i;
         telf_obj *symtab_obj = NULL;
         telf_obj *obj = NULL;
@@ -24,13 +24,14 @@ symbolfs_symtab_build(telf_ctx *ctx)
         char path[256];
 
         rc = elf_namei(ctx, "/sections/symtab", &symtab_obj);
-        if (-1 == rc) {
-                ret = -1;
+        if (ELF_SUCCESS != rc) {
+                LOG(LOG_ERR, 0, "can't symtab section: '%s'",
+                    elf_status_to_str(rc));
+                ret = rc;
                 goto end;
         }
 
         symtab_obj->driver = *defaultfs_driver_new();
-
 
         for (i = 0; i < ctx->ehdr->e_shnum; i++) {
                 Elf64_Shdr *shdr = ctx->shdr + i;
@@ -51,8 +52,8 @@ symbolfs_symtab_build(telf_ctx *ctx)
         }
 
         rc = elf_obj_list_new(symtab_obj);
-        if (-1 == rc) {
-                ret = -1;
+        if (ELF_SUCCESS != rc) {
+                ret = rc;
                 goto end;
         }
 
@@ -77,8 +78,8 @@ symbolfs_symtab_build(telf_ctx *ctx)
                 }
 
                 rc = symentryfs_build(ctx, obj);
-                if (0 != rc) {
-                        ret = -1;
+                if (ELF_SUCCESS != rc) {
+                        ret = rc;
                         goto end;
                 }
 
@@ -88,16 +89,16 @@ symbolfs_symtab_build(telf_ctx *ctx)
                 list_add(symtab_obj->entries, obj);
         }
 
-        ret = 0;
+        ret = ELF_SUCCESS;
   end:
         return ret;
 }
 
-static int
+static telf_status
 symbolfs_dynsym_build(telf_ctx *ctx)
 {
-        int ret;
-        int rc;
+        telf_status ret;
+        telf_status rc;
         int i;
         telf_obj *obj = NULL;
         telf_obj *dynsym_obj = NULL;
@@ -105,9 +106,10 @@ symbolfs_dynsym_build(telf_ctx *ctx)
         char path[256];
 
         rc = elf_namei(ctx, "/sections/dynsym", &dynsym_obj);
-        if (-1 == rc) {
-                LOG(LOG_ERR, 0, "can not find '/sections/dynsym'");
-                ret = -1;
+        if (ELF_SUCCESS != rc) {
+                LOG(LOG_ERR, 0, "can't find dynsym section: %s'",
+                    elf_status_to_str(rc));
+                ret = rc;
                 goto end;
         }
 
@@ -133,8 +135,8 @@ symbolfs_dynsym_build(telf_ctx *ctx)
         }
 
         rc = elf_obj_list_new(dynsym_obj);
-        if (-1 == rc) {
-                ret = -1;
+        if (ELF_SUCCESS != rc) {
+                ret = rc;
                 goto end;
         }
 
@@ -159,8 +161,10 @@ symbolfs_dynsym_build(telf_ctx *ctx)
                 }
 
                 rc = symentryfs_build(ctx, obj);
-                if (0 != rc) {
-                        ret = -1;
+                if (ELF_SUCCESS != rc) {
+                        LOG(LOG_ERR, 0, "symbol entry build failure: %s",
+                            elf_status_to_str(rc));
+                        ret = rc;
                         goto end;
                 }
 
@@ -170,32 +174,34 @@ symbolfs_dynsym_build(telf_ctx *ctx)
                 LOG(LOG_DEBUG, 0, "adding to dynsym: %s", path);
         }
 
-        ret = 0;
+        ret = ELF_SUCCESS;
   end:
         return ret;
 }
 
-int
+telf_status
 symbolfs_build(telf_ctx *ctx)
 {
-        int rc;
-        int ret;
+        telf_status rc;
+        telf_status ret;
 
         rc = symbolfs_dynsym_build(ctx);
-        if (-1 == rc) {
-                LOG(LOG_ERR, 0, "can't build dynsym driver");
-                ret = -1;
+        if (ELF_SUCCESS != rc) {
+                LOG(LOG_ERR, 0, "can't build dynsym driver: %s",
+                    elf_status_to_str(rc));
+                ret = rc;
                 goto end;
         }
 
         rc = symbolfs_symtab_build(ctx);
-        if (-1 == rc) {
-                LOG(LOG_ERR, 0, "can't build symtab driver");
-                ret = -1;
+        if (ELF_SUCCESS != rc) {
+                LOG(LOG_ERR, 0, "can't build symtab driver: %s",
+                    elf_status_to_str(rc));
+                ret = rc;
                 goto end;
         }
 
-        ret = 0;
+        ret = ELF_SUCCESS;
   end:
         return ret;
 }

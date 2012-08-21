@@ -20,7 +20,7 @@ typedef struct {
 
 #define CHUNK_SIZE 4096
 
-static int
+static telf_status
 elf_obj_set_content_code_func(telf_obj *obj,
                               char **bufp,
                               size_t *buf_lenp)
@@ -37,16 +37,16 @@ elf_obj_set_content_code_func(telf_obj *obj,
                 content->buf = NULL;
         }
 
-        ret = 0;
+        ret = ELF_SUCCESS;
         return ret;
 }
 
-static int
+static telf_status
 elf_obj_set_content_info_func(telf_obj *obj,
                               char **bufp,
                               size_t *buf_lenp)
 {
-        int ret;
+        telf_status ret;
         telf_symentry_content *content = obj->data;
         Elf64_Sym *sym = obj->parent->data;
         char *symname = NULL;
@@ -60,7 +60,7 @@ elf_obj_set_content_info_func(telf_obj *obj,
         content->buf = malloc(CHUNK_SIZE);
         if (! content->buf) {
                 LOG(LOG_ERR, 0, "malloc: %s", strerror(errno));
-                ret = -1;
+                ret = ELF_ENOMEM;
                 goto end;
         }
 
@@ -92,7 +92,7 @@ elf_obj_set_content_info_func(telf_obj *obj,
 
         LOG(LOG_DEBUG, 0, "buf: %s, @buf: %p", content->buf, (void *) content->buf);
 
-        ret = 0;
+        ret = ELF_SUCCESS;
   end:
         if (bufp)
                 *bufp = content->buf;
@@ -117,20 +117,20 @@ struct {
         { .str = "info", .set_content_func = elf_obj_set_content_info_func },
 };
 
-static int
+static telf_status
 elf_obj_set_content(telf_obj *obj,
                     char **bufp,
                     size_t *buf_lenp)
 {
         int i;
-        int rc;
-        int ret;
+        telf_status rc;
+        telf_status ret;
 
         for (i = 0; i < N_ELEMS(e_names); i++) {
                 if (0 == strcmp(obj->name, e_names[i].str)) {
                         rc = e_names[i].set_content_func(obj, bufp, buf_lenp);
-                        if (-1 == rc) {
-                                ret = -1;
+                        if (ELF_SUCCESS != rc) {
+                                ret = rc;
                                 goto end;
                         }
 
@@ -138,7 +138,7 @@ elf_obj_set_content(telf_obj *obj,
                 }
         }
 
-        ret = 0;
+        ret = ELF_SUCCESS;
   end:
 
         return ret;
@@ -148,17 +148,14 @@ elf_obj_set_content(telf_obj *obj,
 
 
 
-
-
-
 /* file */
 
-int
+telf_status
 symentryfs_getattr(void *obj_hdl,
                    telf_stat *st)
 {
-        int ret;
-        int rc;
+        telf_status ret;
+        telf_status rc;
         telf_obj *obj = obj_hdl;
         size_t size;
         telf_symentry_content *content;
@@ -173,8 +170,8 @@ symentryfs_getattr(void *obj_hdl,
         /* we compute the content on-the-fly, in order to set the
          * correct file size: not very efficient but who care? */
         rc = elf_obj_set_content(obj, NULL, &size);
-        if (0 != rc) {
-                ret = -1;
+        if (ELF_SUCCESS != rc) {
+                ret = rc;
                 goto end;
         }
 
@@ -182,39 +179,39 @@ symentryfs_getattr(void *obj_hdl,
         st->st_mode = ELF_S_IFREG | ELF_S_IRUSR;
         st->st_size = size;
 
-        ret = 0;
+        ret = ELF_SUCCESS;
   end:
         return ret;
 }
 
-int
+telf_status
 symentryfs_open(char *path,
                 telf_open_flags flags,
                 void **objp)
 {
-        int ret;
-        int rc;
+        telf_status ret;
+        telf_status rc;
         telf_obj *obj;
         char *buf;
         size_t buf_len;
         telf_symentry_content *content;
 
         rc = elf_namei(ctx, path, &obj);
-        if (0 != rc) {
-                ret = -1;
+        if (ELF_SUCCESS != rc) {
+                ret = rc;
                 goto end;
         }
 
         content = malloc(sizeof *content);
         if (! content) {
                 LOG(LOG_ERR, 0, "malloc: %s", strerror(errno));
-                ret = -1;
+                ret = ELF_ENOMEM;
                 goto end;
         }
 
         rc = elf_obj_set_content(obj, &content->buf, &content->buf_len);
-        if (0 != rc) {
-                ret = -1;
+        if (ELF_SUCCESS != rc) {
+                ret = rc;
                 goto end;
         }
 
@@ -223,7 +220,7 @@ symentryfs_open(char *path,
 
         obj->data = content;
 
-        ret = 0;
+        ret = ELF_SUCCESS;
   end:
 
         if (objp)
@@ -232,7 +229,7 @@ symentryfs_open(char *path,
         return ret;
 }
 
-int
+telf_status
 symentryfs_release(void *obj_hdl)
 {
         telf_obj *obj = obj_hdl;
@@ -242,14 +239,15 @@ symentryfs_release(void *obj_hdl)
                 obj->data = NULL;
         }
 
-        return 0;
+        return ELF_SUCCESS;
 }
 
-int
+telf_status
 symentryfs_read(void *obj_hdl,
                 char *buf,
                 size_t size,
-                off_t offset)
+                off_t offset,
+                size_t *sizep)
 {
         telf_obj *obj = obj_hdl;
         telf_symentry_content *content = obj->data;
@@ -260,16 +258,21 @@ symentryfs_read(void *obj_hdl,
         memcpy(buf, content->buf + offset, size);
 
         LOG(LOG_DEBUG, 0, "read: %s, return %zu", buf, size);
-        return size;
+
+        if (sizep)
+                *sizep = size;
+
+        return ELF_SUCCESS;
 }
 
-int
+telf_status
 symentryfs_write(void *obj,
                  const char *buf,
                  size_t size,
-                 off_t offset)
+                 off_t offset,
+                 size_t *sizep)
 {
-        return 0;
+        return ELF_SUCCESS;
 }
 
 
@@ -277,25 +280,25 @@ symentryfs_write(void *obj,
 /* directory */
 
 
-int
+telf_status
 symentryfs_opendir(char *path,
                    void **objp)
 {
-        return 0;
+        return ELF_SUCCESS;
 }
 
-int
+telf_status
 symentryfs_readdir(void *obj,
                    void *data,
                    fuse_fill_dir_t fill)
 {
-        return 0;
+        return ELF_SUCCESS;
 }
 
-int
+telf_status
 symentryfs_releasedir(void *obj)
 {
-        return 0;
+        return ELF_SUCCESS;
 }
 
 
@@ -315,12 +318,12 @@ telf_fs_driver symentryfs_driver = {
  * @ctx the global context
  * @obj the symtab object
  */
-int
+telf_status
 symentryfs_build(telf_ctx *ctx,
                  telf_obj *parent)
 {
-        int ret;
-        int rc;
+        telf_status ret;
+        telf_status rc;
         telf_obj *entry = NULL;
         int i;
 
@@ -328,9 +331,9 @@ symentryfs_build(telf_ctx *ctx,
         parent->driver = *defaultfs_driver_new();
 
         rc = elf_obj_list_new(parent);
-        if (-1 == rc) {
+        if (ELF_SUCCESS != rc) {
                 LOG(LOG_ERR, 0, "consider this directory as empty...");
-                ret = -1;
+                ret = rc;
                 goto end;
         }
 
@@ -347,7 +350,7 @@ symentryfs_build(telf_ctx *ctx,
         }
 
 
-        ret = 0;
+        ret = ELF_SUCCESS;
   end:
         return ret;
 }

@@ -47,12 +47,12 @@ elf_est_to_st(telf_stat *est,
  * XXX use a specific error type (ELF_FS_ENOMEM, ELF_FS_SUCCESS, ...)
  * to be more expressive
  */
-int
+telf_status
 elf_namei(telf_ctx *ctx,
           const char *path_,
           telf_obj **objp)
 {
-        int ret;
+        telf_status ret;
         telf_obj *obj = NULL;
         telf_obj *parent = NULL;
         char *p = NULL;
@@ -100,14 +100,14 @@ elf_namei(telf_ctx *ctx,
                 if (! parent->entries) {
                         LOG(LOG_ERR, 0, "no entries for parent '%s'",
                             parent->name);
-                        ret = -1;
+                        ret = ELF_ENOENT;
                         goto end;
                 }
 
                 obj = list_get(parent->entries, current);
                 if (! obj) {
                         LOG(LOG_ERR, 0, "can't get entry '%s'", current);
-                        ret = -1;
+                        ret = ELF_ENOENT;
                         goto end;
                 }
 
@@ -118,7 +118,7 @@ elf_namei(telf_ctx *ctx,
                 parent = obj;
         }
 
-        ret = 0;
+        ret = ELF_SUCCESS;
   end:
         if (objp)
                 *objp = obj;
@@ -189,23 +189,23 @@ elf_fs_releasedir(const char *path,
 {
         telf_obj *obj = (telf_obj *) info->fh;
         int ret;
-        int rc;
+        telf_status rc;
 
         LOG(LOG_DEBUG, 0, "%s", path);
 
         if (! obj) {
                 rc = elf_namei(ctx, path, &obj);
-                if (-1 == rc) {
-                        LOG(LOG_ERR, 0, "can't find any object with key '%s'",
-                            path);
+                if (ELF_SUCCESS != rc) {
+                        LOG(LOG_ERR, 0, "can't find object with key '%s': %s",
+                            path, elf_status_to_str(rc));
                         ret = -1;
                         goto end;
                 }
         }
 
         rc = obj->driver.releasedir(obj);
-        if (0 != rc) {
-                LOG(LOG_ERR, 0, "releasedir failed: %d", rc);
+        if (ELF_SUCCESS != rc) {
+                LOG(LOG_ERR, 0, "releasedir failed: %s", elf_status_to_str(rc));
                 ret = rc;
                 goto end;
         }
@@ -332,7 +332,7 @@ elf_fs_getattr(const char *path,
         telf_fs_driver *driver;
         telf_stat est;
         telf_obj *obj = NULL;
-        int rc;
+        telf_status rc;
         int ret;
 
         LOG(LOG_DEBUG, 0, "%s", path);
@@ -344,8 +344,8 @@ elf_fs_getattr(const char *path,
         }
 
         rc = obj->driver.getattr(obj, &est);
-        if (0 != rc) {
-                LOG(LOG_ERR, 0, "getattr failed: %d", rc);
+        if (ELF_SUCCESS != st) {
+                LOG(LOG_ERR, 0, "getattr failed: %s", elf_status_to_str(rc));
                 ret = rc;
                 goto end;
         }
@@ -421,7 +421,7 @@ elf_fs_open(const char *path,
             struct fuse_file_info *info)
 {
         telf_obj *obj = NULL;
-        int rc;
+        telf_status rc;
         int ret;
 
         LOG(LOG_DEBUG, 0, "path=%s", path);
@@ -434,9 +434,10 @@ elf_fs_open(const char *path,
         }
 
         /*XXX weirdo... we should not have drivers alongside the obj... */
-        rc = obj->driver.open((char *) path, 0u /*XXX set the flags*/, (void **) &obj);
-        if (0 != rc) {
-                LOG(LOG_ERR, 0, "open failed: %d", rc);
+        rc = obj->driver.open((char *) path,
+                              0u /*XXX set the flags*/, (void **) &obj);
+        if (ELF_SUCCESS != rc) {
+                LOG(LOG_ERR, 0, "open failed: %s", elf_status_to_str(rc));
                 ret = -1;
                 goto end;
         }
@@ -456,6 +457,7 @@ elf_fs_read(const char *path,
             struct fuse_file_info *info)
 {
         telf_obj *obj = (telf_obj *) info->fh;
+        telf_status rc;
         int ret;
         ssize_t cc;
 
@@ -466,10 +468,10 @@ elf_fs_read(const char *path,
                 goto end;
         }
 
-        cc = obj->driver.read(obj, buf, size, offset);
-        if (cc < 0) {
-                LOG(LOG_ERR, 0, "%s: can't read %zu bytes @offset: %zd",
-                    path, size, offset);
+        rc = obj->driver.read(obj, buf, size, offset, &cc);
+        if (ELF_SUCCESS != rc) {
+                LOG(LOG_ERR, 0, "%s: can't read %zu bytes at offset %zd: %s",
+                    path, size, offset, elf_status_to_str(rc));
                 ret = -1;
                 goto end;
         }
@@ -494,22 +496,23 @@ elf_fs_readdir(const char *path,
                struct fuse_file_info *info)
 {
         int ret;
-        int rc;
+        telf_status rc;
         telf_obj *obj;
 
         LOG(LOG_DEBUG, 0, "path=%s", path);
 
         rc = elf_namei(ctx, path, &obj);
-        if (-1 == rc) {
-                LOG(LOG_ERR, 0, "can't find any object with key '%s'", path);
-                ret = -1;
+        if (ELF_SUCCESS != rc) {
+                LOG(LOG_ERR, 0, "can't find object with key '%s': %s",
+                    path, elf_status_to_str(rc));
+                ret = -ENOENT;
                 goto end;
         }
 
         rc = obj->driver.readdir(obj, data, fill);
-        if (0 != rc) {
-                LOG(LOG_ERR, 0, "readdir failed: %d", rc);
-                ret = rc;
+        if (ELF_SUCCESS != rc) {
+                LOG(LOG_ERR, 0, "readdir failed: %s", elf_status_to_str(rc));
+                ret = -ENOENT;
                 goto end;
         }
 
@@ -533,22 +536,22 @@ elf_fs_release(const char *path,
 {
         telf_obj *obj = (telf_obj *) info->fh;
         int ret;
-        int rc;
+        telf_status rc;
 
         if (! obj) {
                 rc = elf_namei(ctx, path, &obj);
-                if (-1 == rc) {
-                        LOG(LOG_ERR, 0, "can't find any object with key '%s'",
-                            path);
+                if (ELF_SUCCESS != rc) {
+                        LOG(LOG_ERR, 0, "can't find object with key '%s': %s",
+                            path, elf_status_to_str(rc));
                         ret = -ENOENT;
                         goto end;
                 }
         }
 
         rc = obj->driver.release(obj);
-        if (0 != rc) {
-                LOG(LOG_ERR, 0, "release failed: %d", rc);
-                ret = rc;
+        if (ELF_SUCCESS != rc) {
+                LOG(LOG_ERR, 0, "release failed: %s", elf_status_to_str(rc));
+                ret = -EIO;
                 goto end;
         }
 
@@ -618,27 +621,27 @@ elf_fs_write(const char *path,
              struct fuse_file_info *info)
 {
         telf_obj *obj = (telf_obj *) info->fh;
+        telf_status rc;
         int ret;
-        int rc;
         ssize_t cc;
 
         LOG(LOG_DEBUG, 0, "path=%s", path);
 
         if (! obj) {
                 rc = elf_namei(ctx, path, &obj);
-                if (-1 == rc) {
-                        LOG(LOG_ERR, 0, "can't find any object with key '%s'",
-                            path);
+                if (ELF_SUCCESS != rc) {
+                        LOG(LOG_ERR, 0, "can't find object with key '%s': %s",
+                            path, elf_status_to_str(rc));
                         ret = -ENOENT;
                         goto end;
                 }
         }
 
-        cc = obj->driver.write(obj, buf, size, offset);
-        if (cc < 0) {
+        rc = obj->driver.write(obj, buf, size, offset, &cc);
+        if (ELF_SUCCESS != rc) {
                 LOG(LOG_ERR, 0, "%s: can't write %zu bytes @offset: %zd",
                     path, size, offset);
-                ret = -1;
+                ret = -EIO;
                 goto end;
         }
 

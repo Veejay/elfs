@@ -4,7 +4,7 @@
 #include "fs-structs.h"
 #include "elfs.h"
 
-int symbolfs_build(telf_ctx *ctx);
+telf_status symbolfs_build(telf_ctx *ctx);
 
 telf_fs_driver symbolfs_driver;
 

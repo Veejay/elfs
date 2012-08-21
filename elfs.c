@@ -165,8 +165,6 @@ elf_obj_new(telf_ctx *ctx,
                 break;
         }
 
-        /* elf_obj_set_content(obj, NULL, &obj->st.st_size); */
-
         return obj;
 
   err:
@@ -178,21 +176,21 @@ elf_obj_new(telf_ctx *ctx,
         return NULL;
 }
 
-int
+telf_status
 elf_obj_list_new(telf_obj *obj)
 {
-        int ret;
+        telf_status ret;
 
         obj->entries = list_new();
         if (! obj->entries) {
-                ret = -1;
+                ret = ELF_ENOMEM;
                 goto end;
         }
 
         list_set_free_func(obj->entries, elf_obj_free_func);
         list_set_cmp_func(obj->entries, elf_obj_cmp_func);
 
-        ret = 0;
+        ret = ELF_SUCCESS;
   end:
         return ret;
 }
@@ -211,34 +209,34 @@ elf_ctx_free(telf_ctx *ctx)
         }
 }
 
-static int
+static telf_status
 elf_sanity_check(unsigned char *addr)
 {
-        int ret;
+        telf_status ret;
 
         if (strncmp(addr, ELFMAG, SELFMAG)) {
                 LOG(LOG_ERR, 0, "bad magic: %*s", SELFMAG, addr);
-                ret = -1;
+                ret = -EIO;
                 goto end;
         }
 
         if (ELFCLASSNONE == addr + EI_CLASS) {
                 LOG(LOG_ERR, 0, "bad elf class %c", addr[EI_CLASS]);
-                ret = -1;
+                ret = -EIO;
                 goto end;
         }
 
-        ret = 0;
+        ret = ELF_SUCCESS;
   end:
         return ret;
 }
 
-static int
+static telf_status
 elf_mmap_internal(telf_ctx *ctx)
 {
         int fd = -1;
-        int ret;
-        int rc;
+        telf_status ret;
+        telf_status rc;
         void *addr = NULL;
 
         fd = open(ctx->path, 0600, O_RDONLY);
@@ -258,9 +256,9 @@ elf_mmap_internal(telf_ctx *ctx)
         ctx->addr = (unsigned char *) addr;
 
         rc = elf_sanity_check(ctx->addr);
-        if (-1 == rc) {
+        if (ELF_SUCCESS != rc) {
                 LOG(LOG_ERR, 0, "sanity checks failed");
-                ret = -1;
+                ret = -EIO;
                 goto err;
         }
 
@@ -274,7 +272,7 @@ elf_mmap_internal(telf_ctx *ctx)
 
         LOG(LOG_DEBUG, 0, "elf hdr: %p", addr);
 
-        ret = 0;
+        ret = ELF_SUCCESS;
   err:
 
         if (-1 != fd)
@@ -287,7 +285,8 @@ static telf_ctx *
 elf_ctx_new(const char * const path)
 {
         telf_ctx *ctx = NULL;
-        int rc;
+        telf_status rc;
+        int iret;
         int i;
         Elf64_Sym *sym = NULL;
 
@@ -304,26 +303,26 @@ elf_ctx_new(const char * const path)
                 goto err;
         }
 
-        rc = stat(path, &ctx->st);
-        if (-1 == rc) {
+        iret = stat(path, &ctx->st);
+        if (-1 == iret) {
                 LOG(LOG_ERR, 0, "stat(%s): %s", path, strerror(errno));
                 goto err;
         }
 
         rc = elf_mmap_internal(ctx);
-        if (-1 == rc)
+        if (ELF_SUCCESS != rc)
                 goto err;
 
         rc = rootfs_build(ctx);
-        if (-1 == rc)
+        if (ELF_SUCCESS != rc)
                 goto err;
 
         rc = sectionfs_build(ctx);
-        if (-1 == rc)
+        if (ELF_SUCCESS != rc)
                 goto err;
 
         rc = symbolfs_build(ctx);
-        if (-1 == rc)
+        if (ELF_SUCCESS != rc)
                 goto err;
 
         LOG(LOG_DEBUG, 0, "ctx successfully created for file %s", path);
