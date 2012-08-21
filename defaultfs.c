@@ -21,6 +21,7 @@ defaultfs_getattr(void *obj_hdl,
 
         st->st_nlink = 1;
         st->st_mode = ELF_S_IFDIR | ELF_S_IRWXU;
+        st->st_size = 0;
 
         return ELF_SUCCESS;
 }
