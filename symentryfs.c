@@ -277,8 +277,6 @@ symentryfs_read(void *obj_hdl,
 
         memcpy(buf, content->buf + offset, size);
 
-        LOG(LOG_DEBUG, 0, "read: %s, return %zu", buf, size);
-
         if (sizep)
                 *sizep = size;
 

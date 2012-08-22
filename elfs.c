@@ -114,8 +114,6 @@ elf_obj_cmp_func(void *key_,
         char *key = key_;
         telf_obj *elem = elem_;
 
-        LOG(LOG_DEBUG, 0, "compare key=%s to entry->name=%s", key, elem->name);
-
         return strcmp(key, elem->name);
 }
 
