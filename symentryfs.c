@@ -37,6 +37,19 @@ elf_obj_set_content_code_func(telf_obj *obj,
 
         content->buf_len = sym->st_size;
 
+        if (content->buf_len) {
+                content->buf = malloc(content->buf_len);
+                if (! content->buf) {
+                        LOG(LOG_ERR, 0, "malloc: %s", strerror(errno));
+                        ret = ELF_ENOMEM;
+                        goto end;
+                }
+
+                memcpy(content->buf,
+                       obj->ctx->addr + shdr->sh_offset,
+                       content->buf_len);
+        }
+
         ret = ELF_SUCCESS;
   end:
         if (bufp)
