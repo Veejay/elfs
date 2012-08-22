@@ -47,7 +47,12 @@ sectionfs_build(telf_ctx *ctx)
                 goto end;
         }
 
-        sections_obj->driver = *defaultfs_driver_new();
+        sections_obj->driver = defaultfs_driver_new();
+        if (! sections_obj->driver) {
+                LOG(LOG_ERR, 0, "can't create sectionfs driver");
+                ret = ELF_FAILURE;
+                goto end;
+        }
 
         for (i = 0; i < ctx->n_sections; ++i) {
                 telf_type type;

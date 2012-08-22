@@ -46,8 +46,12 @@ rootfs_build(telf_ctx *ctx)
         list_add(root_obj->entries, sections_obj);
 
         /* set the fs callbacks related to the root directory */
-        root_obj->driver = *defaultfs_driver_new();
-
+        root_obj->driver = defaultfs_driver_new();
+        if (! root_obj->driver) {
+                LOG(LOG_ERR, 0, "can't create rootfs driver");
+                ret = ELF_FAILURE;
+                goto err;
+        }
 
         /* and finally... */
         ctx->root = root_obj;

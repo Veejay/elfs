@@ -201,7 +201,12 @@ defaultfs_driver_new(void)
         telf_fs_driver *driver = NULL;
 
         driver = malloc(sizeof *driver);
-        assert(NULL != driver);
+        if (! driver) {
+                LOG(LOG_ERR, 0, "malloc: %s", strerror(errno));
+                return NULL;
+        }
+
+        driver->data = NULL;
 
         driver->getattr    = defaultfs_getattr;
         driver->open       = defaultfs_open;

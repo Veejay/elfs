@@ -197,7 +197,7 @@ elf_fs_releasedir(const char *path,
                 }
         }
 
-        rc = obj->driver.releasedir(obj);
+        rc = obj->driver->releasedir(obj);
         if (ELF_SUCCESS != rc) {
                 LOG(LOG_ERR, 0, "releasedir failed: %s", elf_status_to_str(rc));
                 ret = rc;
@@ -337,7 +337,7 @@ elf_fs_getattr(const char *path,
                 goto end;
         }
 
-        rc = obj->driver.getattr(obj, &est);
+        rc = obj->driver->getattr(obj, &est);
         if (ELF_SUCCESS != rc) {
                 LOG(LOG_ERR, 0, "getattr failed: %s", elf_status_to_str(rc));
                 ret = rc;
@@ -423,7 +423,7 @@ elf_fs_open(const char *path,
         }
 
         /*XXX weirdo... we should not have drivers alongside the obj... */
-        rc = obj->driver.open((char *) path,
+        rc = obj->driver->open((char *) path,
                               0u /*XXX set the flags*/, (void **) &obj);
         if (ELF_SUCCESS != rc) {
                 LOG(LOG_ERR, 0, "open failed: %s", elf_status_to_str(rc));
@@ -457,7 +457,7 @@ elf_fs_read(const char *path,
                 goto end;
         }
 
-        rc = obj->driver.read(obj, buf, size, offset, &cc);
+        rc = obj->driver->read(obj, buf, size, offset, &cc);
         if (rc != ELF_SUCCESS) {
                 LOG(LOG_ERR, 0, "%s: can't read %zu bytes @offset: %zd: %s",
                     path, size, offset, elf_status_to_str(rc));
@@ -494,7 +494,7 @@ elf_fs_write(const char *path,
                 }
         }
 
-        rc = obj->driver.write(obj, buf, size, offset, &cc);
+        rc = obj->driver->write(obj, buf, size, offset, &cc);
         if (ELF_SUCCESS != rc) {
                 LOG(LOG_ERR, 0, "%s: can't write %zu bytes @offset: %zd: %s",
                     path, size, offset, elf_status_to_str(rc));
@@ -535,7 +535,7 @@ elf_fs_readdir(const char *path,
                 goto end;
         }
 
-        rc = obj->driver.readdir(obj, data, fill);
+        rc = obj->driver->readdir(obj, data, fill);
         if (ELF_SUCCESS != rc) {
                 LOG(LOG_ERR, 0, "readdir failed: %s", elf_status_to_str(rc));
                 ret = -EIO;
@@ -574,7 +574,7 @@ elf_fs_release(const char *path,
                 }
         }
 
-        rc = obj->driver.release(obj);
+        rc = obj->driver->release(obj);
         if (ELF_SUCCESS != rc) {
                 LOG(LOG_ERR, 0, "release failed: %s", elf_status_to_str(rc));
                 ret = -EIO;

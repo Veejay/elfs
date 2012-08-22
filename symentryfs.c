@@ -321,15 +321,32 @@ symentryfs_releasedir(void *obj)
 
 
 telf_fs_driver symentryfs_driver = {
-        .getattr    = symentryfs_getattr,
-        .open       = symentryfs_open,
-        .release    = symentryfs_release,
-        .read       = symentryfs_read,
-        .write      = symentryfs_write,
-        .opendir    = symentryfs_opendir,
-        .readdir    = symentryfs_readdir,
-        .releasedir = symentryfs_releasedir,
 };
+
+static telf_fs_driver *
+symentryfs_driver_new(void)
+{
+        telf_fs_driver *driver;
+
+        driver = malloc(sizeof *driver);
+        if (! driver) {
+                LOG(LOG_ERR, 0, "malloc: %s", strerror(errno));
+                return NULL;
+        }
+
+        memset(driver, 0, sizeof *driver);
+
+        driver->getattr    = symentryfs_getattr;
+        driver->open       = symentryfs_open;
+        driver->release    = symentryfs_release;
+        driver->read       = symentryfs_read;
+        driver->write      = symentryfs_write;
+        driver->opendir    = symentryfs_opendir;
+        driver->readdir    = symentryfs_readdir;
+        driver->releasedir = symentryfs_releasedir;
+
+        return driver;
+}
 
 
 telf_status
@@ -342,7 +359,7 @@ symentryfs_build(telf_ctx *ctx,
         int i;
 
         /* parent->driver = symentryfs_driver; */
-        parent->driver = *defaultfs_driver_new();
+        /* parent->driver = *defaultfs_driver_new(); */
 
         rc = elf_obj_list_new(parent);
         if (ELF_SUCCESS != rc) {
@@ -359,7 +376,12 @@ symentryfs_build(telf_ctx *ctx,
                         continue;
                 }
 
-                entry->driver = symentryfs_driver;
+                entry->driver = symentryfs_driver_new();
+                if (! entry->driver) {
+                        LOG(LOG_ERR, 0, "cant' create symentryfs driver");
+                        ret = ELF_FAILURE;
+                }
+
                 list_add(parent->entries, entry);
         }
 

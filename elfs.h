@@ -66,7 +66,7 @@ typedef enum {
 struct self_ctx;
 
 typedef struct self_obj {
-        telf_fs_driver driver;   /* set of callbacks */
+        telf_fs_driver *driver;  /* set of callbacks */
 
         struct self_ctx *ctx;    /* global context */
         struct self_obj *parent; /* equivalent to ".." */

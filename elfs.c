@@ -90,15 +90,18 @@ elf_type_to_str(telf_type type)
 static void
 elf_obj_free(telf_obj *obj)
 {
-        if (obj) {
-                if (obj->name)
-                        free(obj->name);
+        LOG(LOG_DEBUG, 0, "free obj @%p, name=%s", (void *) obj, obj->name);
 
-                if (obj->entries)
-                        list_free(obj->entries);
+        if (obj->entries)
+                list_free(obj->entries);
 
-                free(obj);
-        }
+        if (obj->name)
+                free(obj->name);
+
+        if (obj->driver)
+                free(obj->driver);
+
+        free(obj);
 }
 
 static void
@@ -144,25 +147,14 @@ elf_obj_new(telf_ctx *ctx,
                 goto err;
         }
 
-        driver = defaultfs_driver_new();
-        if (! driver) {
-                LOG(LOG_ERR, 0, "can't create new defaultfs driver");
-                goto err;
-        }
-
         obj->ctx = ctx;
         obj->parent = parent;
         obj->type = type;
-        obj->driver = *driver; // default
 
-        switch (obj->type) {
-        case ELF_SYMBOL_ENTRY:
-                /* obj->driver = &obj_driver; */
-                obj->st.st_mode = ELF_S_IFREG;
-                break;
-        default:
-                obj->st.st_mode = ELF_S_IFDIR;
-                break;
+        obj->driver = defaultfs_driver_new();
+        if (! obj->driver) {
+                LOG(LOG_ERR, 0, "can't create defaultfs driver");
+                goto err;
         }
 
         return obj;
