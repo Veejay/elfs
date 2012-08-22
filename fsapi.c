@@ -422,9 +422,16 @@ elf_fs_open(const char *path,
                 goto end;
         }
 
-        /*XXX weirdo... we should not have drivers alongside the obj... */
-        rc = obj->driver->open((char *) path,
-                              0u /*XXX set the flags*/, (void **) &obj);
+        /*XXX weirdo... we should not have drivers alongside the obj...
+         *
+         * the open() callback is more like a constructor here, it fills
+         * the chunk associated to 'obj' with appropriate data
+         *
+         * from an API point of view it kind of sucks -- maybe I should
+         * rework the whole API and use a per-obj file handler, with
+         * global contextes, each one embedding its fs driver
+         */
+        rc = obj->driver->open((char *) path, 0u /* XXX */, (void **) &obj);
         if (ELF_SUCCESS != rc) {
                 LOG(LOG_ERR, 0, "open failed: %s", elf_status_to_str(rc));
                 ret = -EIO;
