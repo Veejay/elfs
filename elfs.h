@@ -105,6 +105,5 @@ typedef struct self_ctx {
 
 
 telf_obj *elf_obj_new(telf_ctx *ctx, char *path, telf_obj *parent, telf_type type);
-int elf_obj_list_new(telf_obj *obj);
 
 #endif /* ELFS_H */

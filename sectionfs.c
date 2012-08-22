@@ -39,14 +39,6 @@ sectionfs_build(telf_ctx *ctx)
         if (! ctx->n_sections)
                 return ELF_SUCCESS;
 
-        rc = elf_obj_list_new(sections_obj);
-        if (ELF_SUCCESS != rc) {
-                LOG(LOG_ERR, 0, "section entries creation failed: %s",
-                    elf_status_to_str(rc));
-                ret = rc;
-                goto end;
-        }
-
         sections_obj->driver = defaultfs_driver_new();
         if (! sections_obj->driver) {
                 LOG(LOG_ERR, 0, "can't create sectionfs driver");

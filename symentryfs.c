@@ -342,16 +342,6 @@ symentryfs_build(telf_ctx *ctx,
         telf_obj *entry = NULL;
         int i;
 
-        /* parent->driver = symentryfs_driver; */
-        /* parent->driver = *defaultfs_driver_new(); */
-
-        rc = elf_obj_list_new(parent);
-        if (ELF_SUCCESS != rc) {
-                LOG(LOG_ERR, 0, "consider this directory as empty...");
-                ret = rc;
-                goto end;
-        }
-
         for (i = 0; i < N_ELEMS(e_names); i++) {
                 entry = elf_obj_new(ctx, e_names[i].str, parent, ELF_SYMBOL_ENTRY);
                 if (! entry) {

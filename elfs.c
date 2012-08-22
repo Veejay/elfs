@@ -127,7 +127,6 @@ elf_obj_new(telf_ctx *ctx,
             telf_type type)
 {
         telf_obj *obj = NULL;
-        Elf64_Sym *sym = NULL;
         telf_fs_driver *driver = NULL;
 
         LOG(LOG_DEBUG, 0, "build object: path=%s, parent=%p, type=%s",
@@ -140,6 +139,15 @@ elf_obj_new(telf_ctx *ctx,
         }
 
         memset(obj, 0, sizeof *obj);
+
+        obj->entries = list_new();
+        if (! obj->entries) {
+                LOG(LOG_ERR, 0, "can't create list entries");
+                goto err;
+        }
+
+        list_set_free_func(obj->entries, elf_obj_free_func);
+        list_set_cmp_func(obj->entries, elf_obj_cmp_func);
 
         obj->name = strdup(path);
         if (! obj->name) {
@@ -166,25 +174,6 @@ elf_obj_new(telf_ctx *ctx,
                 free(driver);
 
         return NULL;
-}
-
-telf_status
-elf_obj_list_new(telf_obj *obj)
-{
-        telf_status ret;
-
-        obj->entries = list_new();
-        if (! obj->entries) {
-                ret = ELF_ENOMEM;
-                goto end;
-        }
-
-        list_set_free_func(obj->entries, elf_obj_free_func);
-        list_set_cmp_func(obj->entries, elf_obj_cmp_func);
-
-        ret = ELF_SUCCESS;
-  end:
-        return ret;
 }
 
 static void

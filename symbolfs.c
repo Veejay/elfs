@@ -56,12 +56,6 @@ symbolfs_symtab_build(telf_ctx *ctx)
                 goto end;
         }
 
-        rc = elf_obj_list_new(symtab_obj);
-        if (ELF_SUCCESS != rc) {
-                ret = rc;
-                goto end;
-        }
-
         Elf64_Sym *sym = NULL;
         for (i = 0; i < ctx->n_syms; i++) {
                 sym = elf_getnsym(ctx, i);
@@ -144,12 +138,6 @@ symbolfs_dynsym_build(telf_ctx *ctx)
 
         if (! ctx->n_dsyms) {
                 ret = ELF_SUCCESS;
-                goto end;
-        }
-
-        rc = elf_obj_list_new(dynsym_obj);
-        if (ELF_SUCCESS != rc) {
-                ret = rc;
                 goto end;
         }
 

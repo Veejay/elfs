@@ -28,14 +28,6 @@ rootfs_build(telf_ctx *ctx)
                 goto err;
         }
 
-        rc = elf_obj_list_new(root_obj);
-        if (ELF_SUCCESS != rc) {
-                LOG(LOG_ERR, 0, "entries creation failed: %s",
-                    elf_status_to_str(rc));
-                ret = rc;
-                goto err;
-        }
-
         sections_obj = elf_obj_new(ctx, "sections", root_obj, ELF_SECTION);
         if (! sections_obj) {
                 LOG(LOG_ERR, 0, "section obj creation failed");
