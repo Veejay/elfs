@@ -59,7 +59,6 @@ elf_namei(telf_ctx *ctx,
         p = path;
 
         if (0 == strcmp(path, "/")) {
-                LOG(LOG_ERR, 0, "can't find rootdir");
                 obj = ctx->root;
                 assert(NULL != obj);
 

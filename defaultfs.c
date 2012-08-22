@@ -141,10 +141,8 @@ readdir_getdirent(void *hdl,
                 return -1;
 
         addr = dir_hdl->get_entryname_func(dir_hdl, &name);
-        if (! name) {
-                LOG(LOG_ERR, 0, "can't get entry name");
+        if (! name)
                 return -1;
-        }
 
         if (*name)
                 sprintf(dirent->name, "%s", name);
