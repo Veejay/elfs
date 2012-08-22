@@ -312,7 +312,12 @@ elf_ctx_new(const char * const path,
         if (ELF_SUCCESS != rc)
                 goto err;
 
+        /* now that 'generic' sections are built, initialize specific ones */
         rc = symbolfs_build(ctx);
+        if (ELF_SUCCESS != rc)
+                goto err;
+
+        rc = programfs_build(ctx);
         if (ELF_SUCCESS != rc)
                 goto err;
 

@@ -16,6 +16,7 @@
 #define ELF_TYPES_TABLE                                 \
         MAP(ELF_SECTION_NULL)                           \
         MAP(ELF_SECTION_PROGBITS)                       \
+        MAP(ELF_SECTION_PROGBITS_CODE)                  \
         MAP(ELF_SECTION_SYMTAB)                         \
         MAP(ELF_SECTION_STRTAB)                         \
         MAP(ELF_SECTION_RELA)                           \

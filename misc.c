@@ -40,13 +40,13 @@ elf_getsectionbyname(telf_ctx *ctx,
                      char *name)
 {
         int i;
-        Elf64_Shdr *shdr = NULL;
 
         for (i = 0; i < ctx->n_sections; i++) {
-                char *i_name = elf_getnsectionname(ctx, i);
+                Elf64_Shdr *shdr = ctx->shdr + i;
+                char *i_name = elf_getsectionname(ctx, shdr);
 
                 if (0 == strcmp(i_name, name))
-                        return elf_getnsection(ctx, i);
+                        return shdr;
         }
 
         return NULL;

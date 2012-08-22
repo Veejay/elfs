@@ -191,3 +191,27 @@ list_extract(tlist *q,
                 node = node->next;
         }
 }
+
+void
+list_map_internal(tnode *head,
+                  tlist_map_func map_func,
+                  void *ctx)
+{
+        if (! head)
+                return;
+
+        if (head->elem)
+                map_func(head->elem, ctx);
+
+        list_map_internal(head->next, map_func, ctx);
+}
+
+
+void
+list_map(tlist *q,
+         tlist_map_func map_func,
+         void *ctx)
+{
+        if (q)
+                list_map_internal(q->head, map_func, ctx);
+}
