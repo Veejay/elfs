@@ -285,13 +285,16 @@ elf_mmap_internal(telf_ctx *ctx)
 }
 
 static telf_ctx *
-elf_ctx_new(const char * const path)
+elf_ctx_new(const char * const path,
+            const char * const mountpoint)
 {
         telf_ctx *ctx = NULL;
         telf_status rc;
         int iret;
         int i;
         Elf64_Sym *sym = NULL;
+
+        LOG(LOG_DEBUG, 0, "mount file '%s' on '%s'", path, mountpoint);
 
         ctx = malloc(sizeof *ctx);
         if (! ctx) {
@@ -303,6 +306,12 @@ elf_ctx_new(const char * const path)
 
         if (NULL == realpath(path, ctx->path)) {
                 LOG(LOG_ERR, 0, "realpath(%s): %s", path, strerror(errno));
+                goto err;
+        }
+
+        iret = mkdir(mountpoint, 0755);
+        if (-1 == iret && EEXIST != errno) {
+                LOG(LOG_ERR, 0, "mkdir(%s): %s", mountpoint, strerror(errno));
                 goto err;
         }
 
@@ -387,6 +396,9 @@ main(int argc,
         const char * const progname = argv[0];
         char *lvl = NULL;
 
+        char *elf_file;
+        char *mountpoint;
+
         if (argc < 2) {
                 usage(progname);
                 exit(EXIT_FAILURE);
@@ -404,9 +416,12 @@ main(int argc,
                         loglevel = rc;
         }
 
+        elf_file = argv[1];
+        mountpoint = argv[argc - 1];
+
         LOG(LOG_DEBUG, 0, "loglevel=%s", prioritytoa(loglevel));
 
-        ctx = elf_ctx_new(argv[1]);
+        ctx = elf_ctx_new(elf_file, mountpoint);
         if (! ctx) {
                 LOG(LOG_ERR, 0, "ctx creation failed");
                 exit(EXIT_FAILURE);
