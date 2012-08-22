@@ -30,7 +30,8 @@ list_free(tlist *q)
         while (node) {
                 tnode *dummy = node;
                 node = node->next;
-                q->free_func(dummy);
+                q->free_func(dummy->elem);
+                free(dummy);
         }
 
         free(q);
