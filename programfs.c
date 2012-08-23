@@ -12,6 +12,20 @@
 
 telf_ctx *ctx;
 
+static void
+programfs_freecontent(void *data)
+{
+        telf_default_content *content = data;
+
+        if (! content)
+                return;
+
+        if (content->buf)
+                free(content->buf);
+
+        free(content);
+}
+
 static telf_status
 programfs_setcontent_code(void *obj_hdl,
                           char **bufp,
@@ -58,11 +72,14 @@ programfs_setcontent_code(void *obj_hdl,
         return ret;
 }
 
-static struct {
+typedef struct {
         char *str;
         tobj_setcontent_func setcontent_func;
-} programfs_fcb[] = {
-        { .str = "code", .setcontent_func = programfs_setcontent_code },
+        tobj_freecontent_func freecontent_func;
+} telf_fcb;
+
+static telf_fcb programfs_fcb[] = {
+        { "code", programfs_setcontent_code, programfs_freecontent },
 };
 
 
@@ -82,16 +99,17 @@ section_ctor_cb(void *obj_hdl,
 
         for (i = 0; i < N_ELEMS(programfs_fcb); i++) {
 
-                entry = elf_obj_new(obj->ctx, programfs_fcb[i].str, obj,
+                telf_fcb *fcb = programfs_fcb + i;
+                entry = elf_obj_new(obj->ctx, fcb->str, obj,
                                     ELF_SECTION_PROGBITS_CODE,
                                     ELF_S_IFREG);
                 if (! entry) {
-                        LOG(LOG_ERR, 0, "can't build entry '%s'",
-                            programfs_fcb[i].str);
+                        LOG(LOG_ERR, 0, "can't build entry '%s'", fcb->str);
                         continue;
                 }
 
-                entry->fill = programfs_fcb[i].setcontent_func;
+                entry->free_func = fcb->freecontent_func;
+                entry->fill_func = fcb->setcontent_func;
                 list_add(obj->entries, entry);
         }
 

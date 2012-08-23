@@ -35,7 +35,7 @@ defaultfs_getattr(void *obj_hdl,
 
                 /* we compute the content on-the-fly, in order to set the
                  * correct file size: not very efficient but who care? */
-                rc = obj->fill(obj, NULL, &size);
+                rc = obj->fill_func(obj, NULL, &size);
                 if (ELF_SUCCESS != rc) {
                         ret = rc;
                         goto end;
@@ -76,7 +76,7 @@ defaultfs_open(char *path,
                 goto end;
         }
 
-        rc = obj->fill(obj, &content->buf, &content->buf_len);
+        rc = obj->fill_func(obj, &content->buf, &content->buf_len);
         if (ELF_SUCCESS != rc) {
                 ret = rc;
                 goto end;
@@ -101,8 +101,8 @@ defaultfs_release(void *obj_hdl)
 {
         telf_obj *obj = obj_hdl;
 
-        if (obj->data) {
-                free(obj->data);
+        if (obj->free_func) {
+                obj->free_func(obj->data);
                 obj->data = NULL;
         }
 

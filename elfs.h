@@ -73,12 +73,14 @@ typedef struct {
 } telf_default_content;
 
 typedef telf_status (* tobj_setcontent_func)(void *, char **, size_t *);
+typedef void (* tobj_freecontent_func)(void *);
 
 
 typedef struct self_obj {
         telf_fs_driver *driver;  /* set of fs callbacks */
 
-        tobj_setcontent_func fill;
+        tobj_setcontent_func fill_func;
+        tobj_freecontent_func free_func;
 
         struct self_ctx *ctx;    /* global context */
         struct self_obj *parent; /* equivalent to ".." */

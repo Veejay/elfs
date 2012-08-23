@@ -14,6 +14,20 @@ telf_ctx *ctx;
 
 #define CHUNK_SIZE 4096
 
+static void
+symentryfs_freecontent(void *data)
+{
+        telf_default_content *content = data;
+
+        if (! content)
+                return;
+
+        if (content->buf)
+                free(content->buf);
+
+        free(content);
+}
+
 static telf_status
 symentryfs_setcontent_code(void *obj_hdl,
                            char **bufp,
@@ -124,12 +138,15 @@ symentryfs_setcontent_info(void *obj_hdl,
         return ret;
 }
 
-static struct {
+typedef struct {
         char *str;
         tobj_setcontent_func setcontent_func;
-}  symentryfs_fcb[] = {
-        { .str = "code", .setcontent_func = symentryfs_setcontent_code },
-        { .str = "info", .setcontent_func = symentryfs_setcontent_info },
+        tobj_freecontent_func freecontent_func;
+} telf_fcb;
+
+static telf_fcb symentryfs_fcb[] = {
+        { "code", symentryfs_setcontent_code, symentryfs_freecontent },
+        { "info", symentryfs_setcontent_info, symentryfs_freecontent },
 };
 
 telf_status
@@ -142,17 +159,19 @@ symentryfs_build(telf_ctx *ctx,
         int i;
 
         for (i = 0; i < N_ELEMS(symentryfs_fcb); i++) {
-                entry = elf_obj_new(ctx, symentryfs_fcb[i].str,
-                                    parent,
+                telf_fcb *fcb = symentryfs_fcb + i;
+
+                entry = elf_obj_new(ctx, fcb->str, parent,
                                     ELF_SYMBOL_ENTRY,
                                     ELF_S_IFREG);
                 if (! entry) {
                         LOG(LOG_ERR, 0, "can't build entry '%s'",
-                            symentryfs_fcb[i].str);
+                            fcb->str);
                         continue;
                 }
 
-                entry->fill = symentryfs_fcb[i].setcontent_func;
+                entry->free_func = fcb->freecontent_func;
+                entry->fill_func = fcb->setcontent_func;
                 list_add(parent->entries, entry);
         }
 
