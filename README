@@ -1,0 +1,101 @@
+A FUSE filesystem on top of ELF file!
+
+
+This tool is moslty for educationnal purposes, as it permits to easily visualize
+the structure of an ELF object.
+
+
+0. INSTALLATION
+===============
+
+        $ git clone git://github.com/pozdnychev/elfs
+        $ cd elfs
+        $ make
+
+And now, with root privileges:
+
+        $ make install
+
+
+
+1. USAGE
+========
+
+If you want to inspect the ls(1) program, and mount its image into /tmp/ls:
+
+        $ elfs /bin/ls /tmp/ls
+
+        $ ls -l /tmp/elf/
+        total 0
+        drwx------ 1 root root 0 1970-01-01 01:00 sections
+
+        $ ls -l /tmp/elf/sections/
+        total 0
+        drwx------ 1 root root 0 1970-01-01 01:00 bss
+        drwx------ 1 root root 0 1970-01-01 01:00 comment
+        drwx------ 1 root root 0 1970-01-01 01:00 ctors
+        drwx------ 1 root root 0 1970-01-01 01:00 data
+        drwx------ 1 root root 0 1970-01-01 01:00 dtors
+        drwx------ 1 root root 0 1970-01-01 01:00 dynamic
+        drwx------ 1 root root 0 1970-01-01 01:00 dynstr
+        drwx------ 1 root root 0 1970-01-01 01:00 dynsym
+        drwx------ 1 root root 0 1970-01-01 01:00 eh_frame
+        drwx------ 1 root root 0 1970-01-01 01:00 eh_frame_hdr
+        drwx------ 1 root root 0 1970-01-01 01:00 fini
+        drwx------ 1 root root 0 1970-01-01 01:00 gnu.hash
+        drwx------ 1 root root 0 1970-01-01 01:00 gnu.version
+        drwx------ 1 root root 0 1970-01-01 01:00 gnu.version_r
+        drwx------ 1 root root 0 1970-01-01 01:00 got
+        drwx------ 1 root root 0 1970-01-01 01:00 got.plt
+        drwx------ 1 root root 0 1970-01-01 01:00 init
+        drwx------ 1 root root 0 1970-01-01 01:00 interp
+        drwx------ 1 root root 0 1970-01-01 01:00 jcr
+        drwx------ 1 root root 0 1970-01-01 01:00 noname.0x7f3afb0bea88
+        drwx------ 1 root root 0 1970-01-01 01:00 note.ABI-tag
+        drwx------ 1 root root 0 1970-01-01 01:00 note.gnu.build-id
+        drwx------ 1 root root 0 1970-01-01 01:00 plt
+        drwx------ 1 root root 0 1970-01-01 01:00 rela.dyn
+        drwx------ 1 root root 0 1970-01-01 01:00 rela.plt
+        drwx------ 1 root root 0 1970-01-01 01:00 rodata
+        drwx------ 1 root root 0 1970-01-01 01:00 shstrtab
+        drwx------ 1 root root 0 1970-01-01 01:00 strtab
+        drwx------ 1 root root 0 1970-01-01 01:00 symtab
+        drwx------ 1 root root 0 1970-01-01 01:00 text
+
+        $ cat /tmp/elf/sections/symtab/_start/info
+        num: 0
+        value: 0x7f3afb0bf0b8
+        size: 0
+        type: FUNC
+        bind: GLOBAL
+        vis:
+        ndx: none
+        name: UNRESOLVED
+
+        $ od -x -N32 /tmp/elf/sections/plt/code
+        0000000 35ff 32da 0020 25ff 32dc 0020 1f0f 0040
+        0000020 25ff 32da 0020 0068 0000 e900 ffe0 ffff
+
+
+For more informations, just type:
+
+        $ elfs -h
+
+
+
+2. UNINSTALL
+============
+
+With root privileges, in elfs source directory:
+
+     $ make uninstall
+
+
+3. ISSUES
+=========
+
+Please report bugs and comments to:
+
+       https://github.com/pozdnychev/elfs/issues
+
+
