@@ -81,7 +81,7 @@ sectionfs_build(telf_ctx *ctx)
                         break;
                 }
 
-                obj = elf_obj_new(ctx, name, sections_obj, type);
+                obj = elf_obj_new(ctx, name, sections_obj, type, ELF_S_IFDIR);
                 if (! obj) {
                         LOG(LOG_ERR, 0, "obj '%s' creation failed", name);
                         ret = ELF_FAILURE;

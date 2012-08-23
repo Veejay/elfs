@@ -48,6 +48,7 @@ typedef enum {
         ELF_ENOMEM  = -4,
 } telf_status;
 
+
 /* file */
 typedef telf_status (* telf_fs_getattr)(void *obj, telf_stat *st);
 typedef telf_status (* telf_fs_open)(char *name, telf_open_flags flags, void **objp);

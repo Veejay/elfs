@@ -8,22 +8,47 @@
 
 telf_ctx *ctx;
 
-/* file */
 
+/* file */
 
 telf_status
 defaultfs_getattr(void *obj_hdl,
                   telf_stat *st)
 {
-        LOG(LOG_DEBUG, 0, "here");
-
+        telf_status ret;
+        telf_status rc;
         telf_obj *obj = obj_hdl;
+        size_t size;
+        telf_default_content *content;
 
-        st->st_nlink = 1;
-        st->st_mode = ELF_S_IFDIR | ELF_S_IRWXU;
-        st->st_size = 0;
+        if (ELF_S_ISDIR(obj->ftype)) {
+                st->st_nlink = 1;
+                st->st_mode = ELF_S_IFDIR | ELF_S_IXUSR | ELF_S_IRUSR;
+                st->st_size = 0;
+        } else {
+                content = malloc(sizeof *content);
+                assert(NULL != content);
 
-        return ELF_SUCCESS;
+                memset(content, 0, sizeof *content);
+
+                obj->data = content;
+
+                /* we compute the content on-the-fly, in order to set the
+                 * correct file size: not very efficient but who care? */
+                rc = obj->fill(obj, NULL, &size);
+                if (ELF_SUCCESS != rc) {
+                        ret = rc;
+                        goto end;
+                }
+
+                st->st_nlink = 1;
+                st->st_mode = ELF_S_IFREG | ELF_S_IRUSR;
+                st->st_size = size;
+        }
+
+        ret = ELF_SUCCESS;
+  end:
+        return ret;
 }
 
 telf_status
@@ -31,22 +56,78 @@ defaultfs_open(char *path,
                telf_open_flags flags,
                void **objp)
 {
-        return ELF_SUCCESS;
+        telf_status ret;
+        telf_status rc;
+        telf_obj *obj;
+        char *buf;
+        size_t buf_len;
+        telf_default_content *content;
+
+        rc = elf_namei(ctx, path, &obj);
+        if (ELF_SUCCESS != rc) {
+                ret = rc;
+                goto end;
+        }
+
+        content = malloc(sizeof *content);
+        if (! content) {
+                LOG(LOG_ERR, 0, "malloc: %s", strerror(errno));
+                ret = ELF_ENOMEM;
+                goto end;
+        }
+
+        rc = obj->fill(obj, &content->buf, &content->buf_len);
+        if (ELF_SUCCESS != rc) {
+                ret = rc;
+                goto end;
+        }
+
+        if (obj->data)
+                free(obj->data);
+
+        obj->data = content;
+
+        ret = ELF_SUCCESS;
+  end:
+
+        if (objp)
+                *objp = obj;
+
+        return ret;
 }
 
 telf_status
-defaultfs_release(void *obj)
+defaultfs_release(void *obj_hdl)
 {
+        telf_obj *obj = obj_hdl;
+
+        if (obj->data) {
+                free(obj->data);
+                obj->data = NULL;
+        }
+
         return ELF_SUCCESS;
 }
 
 telf_status
-defaultfs_read(void *obj,
+defaultfs_read(void *obj_hdl,
                char *buf,
                size_t size,
                off_t offset,
                ssize_t *sizep)
 {
+        telf_obj *obj = obj_hdl;
+        telf_default_content *content = obj->data;
+        telf_status ret;
+
+        if (size > content->buf_len)
+                size = content->buf_len;
+
+        memcpy(buf, content->buf + offset, size);
+
+        if (sizep)
+                *sizep = size;
+
         return ELF_SUCCESS;
 }
 
@@ -59,7 +140,6 @@ defaultfs_write(void *obj,
 {
         return ELF_SUCCESS;
 }
-
 
 
 /* directory */

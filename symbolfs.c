@@ -70,7 +70,9 @@ symbolfs_symtab_build(telf_ctx *ctx)
                         sprintf(path, "%s", name);
                 }
 
-                obj = elf_obj_new(ctx, path, symtab_obj, ELF_SYMBOL);
+                obj = elf_obj_new(ctx, path, symtab_obj,
+                                  ELF_SYMBOL,
+                                  ELF_S_IFDIR);
                 if (! obj) {
                         LOG(LOG_ERR, 0, "object creation '%s' failed", path);
                         ret = ELF_FAILURE;
@@ -155,7 +157,9 @@ symbolfs_dynsym_build(telf_ctx *ctx)
                         sprintf(path, "%s", name);
                 }
 
-                obj = elf_obj_new(ctx, path, dynsym_obj, ELF_SYMBOL);
+                obj = elf_obj_new(ctx, path, dynsym_obj,
+                                  ELF_SYMBOL,
+                                  ELF_S_IFDIR);
                 if (! obj) {
                         LOG(LOG_ERR, 0, "object creation '%s' failed", path);
                         ret = ELF_FAILURE;

@@ -66,8 +66,19 @@ typedef enum {
 
 struct self_ctx;
 
+
+typedef struct {
+        char *buf;
+        size_t buf_len;
+} telf_default_content;
+
+typedef telf_status (* tobj_setcontent_func)(void *, char **, size_t *);
+
+
 typedef struct self_obj {
-        telf_fs_driver *driver;  /* set of callbacks */
+        telf_fs_driver *driver;  /* set of fs callbacks */
+
+        tobj_setcontent_func fill;
 
         struct self_ctx *ctx;    /* global context */
         struct self_obj *parent; /* equivalent to ".." */
@@ -75,6 +86,7 @@ typedef struct self_obj {
         char *name;              /* entry name */
         void *data;              /* a pointer to the symbol for example */
         telf_type type;          /* type of elf object */
+        telf_ftype ftype;        /* regular file or directoy? */
         telf_stat st;            /* our own struct stat */
         tlist *entries;          /* if directory: list of entries */
 } telf_obj;
@@ -105,6 +117,6 @@ typedef struct self_ctx {
 } telf_ctx;
 
 
-telf_obj *elf_obj_new(telf_ctx *ctx, char *path, telf_obj *parent, telf_type type);
+telf_obj *elf_obj_new(telf_ctx *, char *, telf_obj *, telf_type, telf_ftype);
 
 #endif /* ELFS_H */

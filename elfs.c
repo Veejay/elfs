@@ -124,7 +124,8 @@ telf_obj *
 elf_obj_new(telf_ctx *ctx,
             char *path,
             telf_obj *parent,
-            telf_type type)
+            telf_type type, /* from elf pov: SECTION, SYMBOL, ... */
+            telf_ftype ftype) /* from fs pov: directory, regular, ... */
 {
         telf_obj *obj = NULL;
         telf_fs_driver *driver = NULL;
@@ -140,15 +141,6 @@ elf_obj_new(telf_ctx *ctx,
 
         memset(obj, 0, sizeof *obj);
 
-        obj->entries = list_new();
-        if (! obj->entries) {
-                LOG(LOG_ERR, 0, "can't create list entries");
-                goto err;
-        }
-
-        list_set_free_func(obj->entries, elf_obj_free_func);
-        list_set_cmp_func(obj->entries, elf_obj_cmp_func);
-
         obj->name = strdup(path);
         if (! obj->name) {
                 LOG(LOG_ERR, 0, "strdup(%s): %s", path, strerror(errno));
@@ -158,6 +150,18 @@ elf_obj_new(telf_ctx *ctx,
         obj->ctx = ctx;
         obj->parent = parent;
         obj->type = type;
+        obj->ftype = ftype;
+
+        if (ELF_S_ISDIR(obj->ftype)) {
+                obj->entries = list_new();
+                if (! obj->entries) {
+                        LOG(LOG_ERR, 0, "can't create list entries");
+                        goto err;
+                }
+
+                list_set_free_func(obj->entries, elf_obj_free_func);
+                list_set_cmp_func(obj->entries, elf_obj_cmp_func);
+        }
 
         obj->driver = defaultfs_driver_new();
         if (! obj->driver) {
