@@ -83,7 +83,7 @@ defaultfs_open(char *path,
         }
 
         if (obj->data)
-                free(obj->data);
+                obj->free_func(obj->data);
 
         obj->data = content;
 
