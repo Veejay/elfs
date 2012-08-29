@@ -21,9 +21,10 @@ defaultfs_getattr(void *obj_hdl,
         size_t size;
         telf_default_content *content;
 
-        if (ELF_S_ISDIR(obj->ftype)) {
-                st->st_nlink = 1;
-                st->st_mode = ELF_S_IFDIR | ELF_S_IXUSR | ELF_S_IRUSR;
+        memcpy(st, &obj->st, sizeof *st);
+        st->st_nlink = 1;
+
+        if (ELF_S_ISDIR(obj->st.st_mode)) {
                 st->st_size = 0;
         } else {
                 content = malloc(sizeof *content);
@@ -41,8 +42,6 @@ defaultfs_getattr(void *obj_hdl,
                         goto end;
                 }
 
-                st->st_nlink = 1;
-                st->st_mode = ELF_S_IFREG | ELF_S_IRUSR;
                 st->st_size = size;
         }
 

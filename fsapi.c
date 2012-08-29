@@ -23,7 +23,6 @@ elf_est_to_st(telf_stat *est,
         if (ELF_S_ISREG(est->st_mode))
                 st->st_mode |= S_IFREG;
 
-
 #define X(f) if (ELF_S_##f & est->st_mode) st->st_mode |= S_##f
         X(IRWXU); // 00700 user
         X(IRUSR); // 00400 user has read permission

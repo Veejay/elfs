@@ -29,7 +29,7 @@ typedef enum {
 typedef struct {
         size_t st_size;
         size_t st_nlink;
-        unsigned int st_mode;
+        telf_ftype st_mode;
 } telf_stat;
 
 typedef enum {

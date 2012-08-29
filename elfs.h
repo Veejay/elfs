@@ -88,7 +88,6 @@ typedef struct self_obj {
         char *name;              /* entry name */
         void *data;              /* a pointer to the symbol for example */
         telf_type type;          /* type of elf object */
-        telf_ftype ftype;        /* regular file or directoy? */
         telf_stat st;            /* our own struct stat */
         tlist *entries;          /* if directory: list of entries */
 } telf_obj;
