@@ -31,13 +31,6 @@ symbolfs_symtab_build(telf_ctx *ctx)
                 goto end;
         }
 
-        symtab_obj->driver = defaultfs_driver_new();
-        if (! symtab_obj->driver) {
-                LOG(LOG_ERR, 0, "can't create symbolfs driver");
-                ret = ELF_FAILURE;
-                goto end;
-        }
-
         for (i = 0; i < ctx->ehdr->e_shnum; i++) {
                 Elf64_Shdr *shdr = ctx->shdr + i;
 
@@ -114,13 +107,6 @@ symbolfs_dynsym_build(telf_ctx *ctx)
                 LOG(LOG_ERR, 0, "can not find '/sections/dynsym': %s",
                     elf_status_to_str(rc));
                 ret = rc;
-                goto end;
-        }
-
-        dynsym_obj->driver = defaultfs_driver_new();
-        if (! dynsym_obj->driver) {
-                LOG(LOG_ERR, 0, "can't create symbolfs driver");
-                ret = ELF_FAILURE;
                 goto end;
         }
 

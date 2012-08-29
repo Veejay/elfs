@@ -39,17 +39,11 @@ sectionfs_build(telf_ctx *ctx)
         if (! ctx->n_sections)
                 return ELF_SUCCESS;
 
-        sections_obj->driver = defaultfs_driver_new();
-        if (! sections_obj->driver) {
-                LOG(LOG_ERR, 0, "can't create sectionfs driver");
-                ret = ELF_FAILURE;
-                goto end;
-        }
-
         for (i = 0; i < ctx->n_sections; ++i) {
+                Elf64_Shdr *shdr = ctx->shdr + i;
                 telf_type type;
                 char name[128];
-                char *s_name = sh_strtab_p + ctx->shdr[i].sh_name;
+                char *s_name = sh_strtab_p + shdr->sh_name;
                 telf_obj *obj = NULL;
 
                 if (! *s_name)
@@ -76,7 +70,7 @@ sectionfs_build(telf_ctx *ctx)
 #undef MAP
                 default:
                         LOG(LOG_ERR, 0, "unknown object type: 0x%x",
-                            ctx->shdr[i].sh_type);
+                            shdr->sh_type);
                         type = ELF_SECTION_OTHER;
                         break;
                 }
