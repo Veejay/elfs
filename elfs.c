@@ -321,7 +321,7 @@ elf_ctx_new(const char * const path,
         /* now that 'generic' sections are built, initialize specific ones */
         rc = symbolfs_build(ctx);
         if (ELF_SUCCESS != rc)
-                goto err;
+                LOG(LOG_ERR, 0, "can't build symbol fs, binary is stripped?");
 
         rc = programfs_build(ctx);
         if (ELF_SUCCESS != rc)
