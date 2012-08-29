@@ -9,8 +9,7 @@
 #include <libgen.h>
 #include <sys/mman.h>
 #include <stdlib.h>
-
-#include <sys/ptrace.h>
+#include <signal.h>
 
 #define SYSLOG_NAMES
 #include "log.h"
@@ -190,6 +189,13 @@ elf_ctx_free(telf_ctx *ctx)
                 if (ctx->root)
                         elf_obj_free(ctx->root);
 
+                if (ctx->pid) {
+                        if (ptrace(PTRACE_DETACH, ctx->pid, NULL, NULL) < 0) {
+                                LOG(LOG_ERR, 0, "ptrace_detach: %s",
+                                    strerror(errno));
+                        }
+                }
+
                 free(ctx);
         }
 }
@@ -267,34 +273,87 @@ elf_mmap_internal(telf_ctx *ctx)
         return ret;
 }
 
-static telf_ctx *
-elf_ctx_new(const char * const path,
-            const char * const mountpoint)
+static telf_status
+elf_ctx_process_ctor(telf_ctx *ctx,
+                     int pid)
 {
-        telf_ctx *ctx = NULL;
-        telf_status rc;
         int iret;
-        int i;
-        Elf64_Sym *sym = NULL;
+        telf_status rc;
+        telf_status ret;
+	int status = 0;
+        unsigned char *mem = NULL;
+        long data;
+        unsigned long base = LINUX64_BASE_ADDR;
 
-        LOG(LOG_DEBUG, 0, "mount file '%s' on '%s'", path, mountpoint);
+        ctx->pid = pid;
 
-        ctx = malloc(sizeof *ctx);
-        if (! ctx) {
-                LOG(LOG_ERR, 0, "malloc: %s", strerror(errno));
-                goto err;
+	iret = ptrace(PTRACE_ATTACH, ctx->pid, NULL, NULL);
+        if (-1 == iret) {
+                LOG(LOG_ERR, 0, "ptrace: %s", strerror(errno));
+                ret = ELF_FAILURE;
+                goto end;
         }
 
-        memset(ctx, 0, sizeof *ctx);
+        LOG(LOG_DEBUG, 0, "pid %d attached", ctx->pid);
+	waitpid(ctx->pid, NULL, WUNTRACED);
+
+        /* copy elf header from memory image */
+        ctx->ehdr = malloc(sizeof *ctx->ehdr);
+        if (! ctx->ehdr) {
+                LOG(LOG_ERR, 0, "malloc: %s", strerror(errno));
+                ret =  ELF_ENOMEM;
+                goto end;
+        }
+
+	iret = memread(ctx->pid, base, (void *) ctx->ehdr, sizeof *ctx->ehdr);
+        if (-1 == iret) {
+                LOG(LOG_ERR, 0, "can't read memory at 0x%lx", base);
+                ret = ELF_EIO;
+                goto end;
+        }
+
+        ctx->addr = (unsigned char *) ctx->ehdr;
+
+        /* copy elf PHTs from memory */
+        size_t s_size = ctx->ehdr->e_shnum * ctx->ehdr->e_shentsize;
+        ctx->shdr = malloc(s_size);
+        if (! ctx->shdr) {
+                LOG(LOG_ERR, 0, "malloc: %s", strerror(errno));
+                ret =  ELF_ENOMEM;
+                goto end;
+        }
+
+        iret = memread(ctx->pid, base + ctx->ehdr->e_shoff,
+                       (void *) ctx->shdr, s_size);
+        if (-1 == iret) {
+                LOG(LOG_ERR, 0, "can't read %zu bytes at 0x%lx",
+                    s_size,
+                    base + ctx->ehdr->e_shoff);
+                ret = ELF_EIO;
+                goto end;
+        }
+
+        rc = rootfs_build(ctx);
+        if (ELF_SUCCESS != rc)
+                goto end;
+
+        LOG(LOG_DEBUG, 0, "ctx successfully created for pid %d", ctx->pid);
+
+        ret = ELF_SUCCESS;
+  end:
+        return ret;
+}
+
+static telf_status
+elf_ctx_file_ctor(telf_ctx *ctx,
+                  const char * const path)
+{
+        telf_status rc;
+        Elf64_Sym *sym = NULL;
+        int iret;
 
         if (NULL == realpath(path, ctx->path)) {
                 LOG(LOG_ERR, 0, "realpath(%s): %s", path, strerror(errno));
-                goto err;
-        }
-
-        iret = mkdir(mountpoint, 0755);
-        if (-1 == iret && EEXIST != errno) {
-                LOG(LOG_ERR, 0, "mkdir(%s): %s", mountpoint, strerror(errno));
                 goto err;
         }
 
@@ -325,10 +384,48 @@ elf_ctx_new(const char * const path,
         if (ELF_SUCCESS != rc)
                 goto err;
 
-        LOG(LOG_DEBUG, 0, "ctx successfully created for file %s", path);
+        rc = ELF_SUCCESS;
+  err:
+        return rc;
+}
+
+static telf_ctx *
+elf_ctx_new(const char * const path,
+            int pid,
+            const char * const mountpoint)
+{
+        telf_ctx *ctx = NULL;
+        telf_status rc;
+        int iret;
+
+        LOG(LOG_DEBUG, 0, "mount file '%s' on '%s'", path, mountpoint);
+
+        ctx = malloc(sizeof *ctx);
+        if (! ctx) {
+                LOG(LOG_ERR, 0, "malloc: %s", strerror(errno));
+                goto err;
+        }
+
+        memset(ctx, 0, sizeof *ctx);
+
+        iret = mkdir(mountpoint, 0755);
+        if (-1 == iret && EEXIST != errno) {
+                LOG(LOG_ERR, 0, "mkdir(%s): %s", mountpoint, strerror(errno));
+                goto err;
+        }
+
+
+        if (-1 == pid)
+                rc = elf_ctx_file_ctor(ctx, path);
+        else
+                rc = elf_ctx_process_ctor(ctx, pid);
+
+        if (ELF_SUCCESS != rc) {
+                LOG(LOG_ERR, 0, "ctx creation failed");
+                goto err;
+        }
 
         return ctx;
-
   err:
         elf_ctx_free(ctx);
         return NULL;
@@ -383,11 +480,12 @@ main(int argc,
         int ret;
         const char * const progname = argv[0];
         char *lvl = NULL;
+        int pid = -1;
 
-        char *elf_file;
-        char *mountpoint;
+        char *elf_file = NULL;
+        char *mountpoint = NULL;
 
-        if (argc < 2) {
+        if (argc < 3) {
                 usage(progname);
                 exit(EXIT_FAILURE);
         }
@@ -404,12 +502,31 @@ main(int argc,
                         loglevel = rc;
         }
 
-        elf_file = argv[1];
+        if (0 == strcmp("-p", argv[1])) {
+
+                if (! argc)  {
+                        usage(progname);
+                        ret = EXIT_FAILURE;
+                        goto end;
+                }
+
+                pid = strtoul(argv[2], NULL, 0);
+
+                argc--;
+                argv++;
+        } else {
+                elf_file = argv[1];
+        }
+
         mountpoint = argv[argc - 1];
 
         LOG(LOG_DEBUG, 0, "loglevel=%s", prioritytoa(loglevel));
+        LOG(LOG_DEBUG, 0, "mountpoint=%s", mountpoint);
 
-        ctx = elf_ctx_new(elf_file, mountpoint);
+        signal(SIGHUP, SIG_IGN);
+        signal(SIGURG, SIG_IGN);
+
+        ctx = elf_ctx_new(elf_file, pid, mountpoint);
         if (! ctx) {
                 LOG(LOG_ERR, 0, "ctx creation failed");
                 exit(EXIT_FAILURE);
@@ -417,6 +534,9 @@ main(int argc,
 
         argc--;
         argv++;
+
+        LOG(LOG_ERR, 0, "argv[0]=%s", argv[argc-1]);
+        LOG(LOG_ERR, 0, "argv[1]=%s", argv[argc-2]);
 
         struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
         ret = fuse_main(args.argc, args.argv, &elf_fs_ops, NULL);

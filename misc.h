@@ -27,5 +27,7 @@ Elf64_Sym *elf_getdsymbyname(telf_ctx *ctx, char *name);
 char *sym_bind_to_str(Elf64_Sym *sym);
 char *sym_type_to_str(Elf64_Sym *sym);
 
+int memread(pid_t pid, unsigned long addr, void *outp, size_t len);
+
 
 #endif /* MISC_H */

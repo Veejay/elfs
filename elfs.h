@@ -5,12 +5,16 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <linux/limits.h>
+#include <sys/ptrace.h>
 
 #include <pthread.h>
 #include <elf.h>
 
 #include "fs-structs.h"
 #include "list.h"
+
+#define LINUX32_BASE_ADDR 0x08048000
+#define LINUX64_BASE_ADDR 0x0000000000400000
 
 #define MAP(v) X(v, #v)
 #define ELF_TYPES_TABLE                                 \
@@ -53,6 +57,7 @@
         MAP(ELF_SECTION_HIUSER)                         \
         MAP(ELF_SECTION_OTHER)                          \
         MAP(ELF_SECTION)                                \
+        MAP(ELF_SEGMENT)                                \
         MAP(ELF_SYMBOL)                                 \
         MAP(ELF_SYMBOL_ENTRY)                           \
         MAP(ELF_ROOTDIR)
@@ -99,11 +104,13 @@ typedef struct self_ctx {
         struct stat st;
         char path[PATH_MAX];
         unsigned char *addr;
+        pid_t pid;
 
         unsigned char class;    /* ELFCLASS32 or ELFCLASS64 */
         Elf64_Ehdr *ehdr;       /* elf header */
-        Elf64_Shdr *shdr;       /* sections header */
+        Elf64_Shdr *shdr;       /* sections header table: file view */
         int n_sections;         /* number of sections */
+        Elf64_Phdr *phdr;       /* PHTs: process view */
 
         Elf64_Sym *symtab;      /* symbol table */
         Elf64_Sym *symtab_end;  /* end of symbol table (symtab + size) */
