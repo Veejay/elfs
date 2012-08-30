@@ -105,12 +105,10 @@ typedef struct self_ctx {
         int n_sections;         /* number of sections */
 
         Elf64_Sym *symtab;      /* symbol table */
-        Elf64_Sym *symtab_end;  /* end of symbol table (symtab + size) */
         int n_syms;
         char *strtab;           /* string table */
 
         Elf64_Sym *dsymtab;     /* dynamic symbol table */
-        Elf64_Sym *dsymtab_end; /* end of dynamic symbol table (dsymtab + size) */
         int n_dsyms;
         char *dstrtab;          /* dynamic string table */
 

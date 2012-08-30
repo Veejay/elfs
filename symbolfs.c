@@ -39,7 +39,6 @@ symbolfs_symtab_build(telf_ctx *ctx)
 
                 ctx->n_syms = shdr->sh_size / sizeof (Elf64_Sym);
                 ctx->symtab = (Elf64_Sym *) (ctx->addr + shdr->sh_offset);
-                ctx->symtab_end = ctx->symtab + shdr->sh_size;
                 ctx->strtab = ctx->addr + ctx->shdr[shdr->sh_link].sh_offset;
                 break;
         }
@@ -54,7 +53,7 @@ symbolfs_symtab_build(telf_ctx *ctx)
                 sym = elf_getnsym(ctx, i);
                 assert(NULL != sym);
 
-                name = elf_symname(ctx, sym);
+                name = elf_getsymname(ctx, sym);
                 assert(NULL != name);
 
                 if ('\0' == *name) {
@@ -119,7 +118,6 @@ symbolfs_dynsym_build(telf_ctx *ctx)
 
                 ctx->n_dsyms = shdr->sh_size / sizeof (Elf64_Sym);
                 ctx->dsymtab = (Elf64_Sym *) (ctx->addr + shdr->sh_offset);
-                ctx->dsymtab_end = ctx->dsymtab + shdr->sh_size;
                 ctx->dstrtab = ctx->addr + ctx->shdr[shdr->sh_link].sh_offset;
                 break;
         }
@@ -134,7 +132,7 @@ symbolfs_dynsym_build(telf_ctx *ctx)
                 sym = elf_getndsym(ctx, i);
                 assert(NULL != sym);
 
-                name = elf_dsymname(ctx, sym);
+                name = elf_getdsymname(ctx, sym);
                 assert(NULL != name);
 
                 if ('\0' == *name) {

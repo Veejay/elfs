@@ -11,10 +11,10 @@ char *elf_getnsectionname(telf_ctx *ctx, int n);
 Elf64_Shdr *elf_getsectionbyname(telf_ctx *ctx, char *name);
 
 /** return thge name of a given symbol */
-char *elf_symname(telf_ctx *ctx, Elf64_Sym *sym);
+char *elf_getsymname(telf_ctx *ctx, Elf64_Sym *sym);
 
 /** return the name of a given dynamic symbol */
-char *elf_dsymname(telf_ctx *ctx, Elf64_Sym *sym);
+char *elf_getdsymname(telf_ctx *ctx, Elf64_Sym *sym);
 
 /**  get the n-th symbol (start at 0) */
 Elf64_Sym *elf_getnsym(telf_ctx *ctx, int n);

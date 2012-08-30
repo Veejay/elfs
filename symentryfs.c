@@ -95,12 +95,17 @@ symentryfs_setcontent_info(void *obj_hdl,
                 goto end;
         }
 
-        symname = ((ELF_SECTION_SYMTAB == obj->parent->type) ?
-                   elf_symname :
-                   elf_dsymname)(obj->ctx, sym);
+        /* default value */
+        symname = "NONAME";
 
-        if (! *symname)
-                symname = "UNRESOLVED";
+        if (sym->st_name) {
+                symname = ((ELF_SECTION_SYMTAB == obj->parent->type) ?
+                           elf_getsymname :
+                           elf_getdsymname)(obj->ctx, sym);
+
+                if (! symname || ! *symname)
+                        symname = "UNRESOLVED";
+        }
 
         content->buf_len = sprintf(content->buf,
                                    "num: %d\n"

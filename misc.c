@@ -54,7 +54,7 @@ elf_getsectionbyname(telf_ctx *ctx,
 
 /** return the name of a given symbol */
 char *
-elf_symname(telf_ctx *ctx,
+elf_getsymname(telf_ctx *ctx,
             Elf64_Sym *sym)
 {
         return &ctx->strtab[sym->st_name];
@@ -62,7 +62,7 @@ elf_symname(telf_ctx *ctx,
 
 /** return the name of a given dynamic symbol */
 char *
-elf_dsymname(telf_ctx *ctx,
+elf_getdsymname(telf_ctx *ctx,
              Elf64_Sym *sym)
 {
         return &ctx->dstrtab[sym->st_name];
@@ -99,7 +99,7 @@ elf_getsymbyname(telf_ctx *ctx,
 
         for (i = 0; i < ctx->n_syms; i++) {
                 sym = elf_getnsym(ctx, i);
-                if (0 == strcmp(name, elf_symname(ctx, sym)))
+                if (0 == strcmp(name, elf_getsymname(ctx, sym)))
                         goto end;
         }
 
@@ -116,7 +116,7 @@ elf_getdsymbyname(telf_ctx *ctx,
 
         for (i = 0; i < ctx->n_dsyms; i++) {
                 Elf64_Sym *sym = elf_getndsym(ctx, i);
-                if (0 == strcmp(name, elf_dsymname(ctx, sym)))
+                if (0 == strcmp(name, elf_getdsymname(ctx, sym)))
                         return sym;
         }
 
