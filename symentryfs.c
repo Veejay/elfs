@@ -67,7 +67,7 @@ symentryfs_setcontent_asmcode(void *obj_hdl,
                         len = sprintf(line, "%s\n", ud_insn_asm(&ud_obj));
                         tmp = realloc(content->buf, content->buf_len + len);
                         if (! tmp) {
-                                LOG(LOG_ERR, 0, "malloc", strerror(errno));
+                                LOG(LOG_ERR, 0, "malloc: %s", strerror(errno));
                                 free(content->buf);
                                 content->buf_len = 0;
                                 content->buf = NULL;
@@ -145,19 +145,22 @@ symentryfs_setcontent_info(void *obj_hdl,
         telf_default_content *content = obj->data;
         Elf64_Sym *sym = obj->parent->data;
         char *symname = NULL;
+        char tmpbuf[256];
+
+        if (! content) {
+                content = malloc(sizeof *content);
+                if (! content) {
+                        LOG(LOG_ERR, 0, "malloc: %s", strerror(errno));
+                        ret = ELF_ENOMEM;
+                        goto end;
+                }
+
+                memset(content, 0, sizeof *content);
+        }
 
         // sanity check
-        if (content->buf) {
+        if (content->buf)
                 free(content->buf);
-                content->buf = NULL;
-        }
-
-        content->buf = malloc(CHUNK_SIZE);
-        if (! content->buf) {
-                LOG(LOG_ERR, 0, "malloc: %s", strerror(errno));
-                ret = ELF_ENOMEM;
-                goto end;
-        }
 
         /* default value */
         symname = "NONAME";
@@ -171,32 +174,35 @@ symentryfs_setcontent_info(void *obj_hdl,
                         symname = "UNRESOLVED";
         }
 
-        content->buf_len = sprintf(content->buf,
-                                   "num: %d\n"
+        content->buf_len = sprintf(tmpbuf,
                                    "value: %p\n"
                                    "size: %zu\n"
                                    "type: %s\n"
                                    "bind: %s\n"
-                                   "vis: %c\n"
-                                   "ndx: %s\n"
                                    "name: %s\n",
-                                   0, // num
                                    sym ? (void *) sym->st_value : NULL,
                                    sym ? sym->st_size : 0u,
                                    sym_type_to_str(sym),
                                    sym_bind_to_str(sym),
-                                   sym ? sym->st_other : 0u,
-                                   "none", // ndx
                                    symname);
+
+        content->buf = malloc(content->buf_len + 1);
+        if (! content->buf) {
+                LOG(LOG_ERR, 0, "malloc: %s", strerror(errno));
+                ret = ELF_ENOMEM;
+                goto end;
+        }
+
+        strncpy(content->buf, tmpbuf, content->buf_len);
 
 
         LOG(LOG_DEBUG, 0, "buf: %s, @buf: %p", content->buf, (void *) content->buf);
 
         ret = ELF_SUCCESS;
   end:
-        if (bufp)
+        if (bufp) {
                 *bufp = content->buf;
-        else {
+        } else {
                 free(content->buf);
                 content->buf = NULL;
         }

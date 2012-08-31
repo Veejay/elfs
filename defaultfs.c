@@ -29,13 +29,6 @@ defaultfs_getattr(void *obj_hdl,
         if (ELF_S_ISDIR(obj->st.st_mode)) {
                 st->st_size = 0;
         } else {
-                content = malloc(sizeof *content);
-                assert(NULL != content);
-
-                memset(content, 0, sizeof *content);
-
-                obj->data = content;
-
                 /* we compute the content on-the-fly, in order to set the
                  * correct file size: not very efficient but who care? */
                 rc = obj->fill_func(obj, NULL, &size);
