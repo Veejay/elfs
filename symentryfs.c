@@ -31,136 +31,148 @@ symentryfs_freecontent(void *data)
 }
 
 static telf_status
-symentryfs_setcontent_asmcode(void *obj_hdl,
-                              char **bufp,
-                              size_t *buf_lenp)
+symentryfs_asmcode_getsize(void *obj_hdl,
+                           size_t *sizep)
 {
         telf_obj *obj = obj_hdl;
         telf_status ret;
-        telf_default_content *content = obj->data;
+        telf_status rc;
         Elf64_Sym *sym = obj->parent->data;
         Elf64_Shdr *shdr = obj->ctx->shdr + sym->st_shndx;
         ud_t ud_obj;
-
-        // sanity check
-        if (content->buf) {
-                free(content->buf);
-                content->buf = NULL;
-                content->buf_len = 0;
-        }
-
+        char *buf = NULL;
+        size_t size = 0;
 
         if (STT_FUNC == ELF32_ST_TYPE(sym->st_info) && sym->st_size) {
-
-                ud_init(&ud_obj);
-                ud_set_input_buffer(&ud_obj,
-                                    (char *) obj->ctx->addr + sym->st_value,
-                                    sym->st_size);
-                ud_set_mode(&ud_obj, 64);
-                ud_set_syntax(&ud_obj, UD_SYN_INTEL);
-
-                while (ud_disassemble(&ud_obj)) {
-                        char line[64];
-                        size_t len;
-                        char *tmp;
-
-                        len = sprintf(line, "%s\n", ud_insn_asm(&ud_obj));
-                        tmp = realloc(content->buf, content->buf_len + len);
-                        if (! tmp) {
-                                LOG(LOG_ERR, 0, "malloc: %s", strerror(errno));
-                                free(content->buf);
-                                content->buf_len = 0;
-                                content->buf = NULL;
-                                ret = ELF_ENOMEM;
-                                goto end;
-                        }
-
-                        content->buf = tmp;
-                        memmove(content->buf + content->buf_len, line, len);
-                        content->buf_len += len;
+                rc = binary_to_asm(obj->ctx->addr + shdr->sh_offset,
+                                   sym->st_size,
+                                   NULL,
+                                   &size);
+                if (ELF_SUCCESS != rc) {
+                        LOG(LOG_ERR, 0, "can't extract asm code from binary");
+                        ret = rc;
+                        goto end;
                 }
         }
 
         ret = ELF_SUCCESS;
   end:
-        if (bufp)
-                *bufp = content->buf;
+        if (buf)
+                free(buf);
 
-        if (buf_lenp)
-                *buf_lenp = content->buf_len;
+        if (sizep)
+                *sizep = size;
 
         return ret;
 }
 
 static telf_status
-symentryfs_setcontent_bincode(void *obj_hdl,
+symentryfs_asmcode_setcontent(void *obj_hdl,
                               char **bufp,
                               size_t *buf_lenp)
 {
         telf_obj *obj = obj_hdl;
         telf_status ret;
-        telf_default_content *content = obj->data;
+        telf_status rc;
         Elf64_Sym *sym = obj->parent->data;
         Elf64_Shdr *shdr = obj->ctx->shdr + sym->st_shndx;
+        char *buf = NULL;
+        size_t buf_len = 0;
 
-        // sanity check
-        if (content->buf) {
-                free(content->buf);
-                content->buf = NULL;
-                content->buf_len = 0;
-        }
 
         if (STT_FUNC == ELF32_ST_TYPE(sym->st_info) && sym->st_size) {
-                content->buf_len = sym->st_size;
-                content->buf = malloc(content->buf_len);
-                if (! content->buf) {
-                        LOG(LOG_ERR, 0, "malloc: %s", strerror(errno));
-                        ret = ELF_ENOMEM;
+                rc = binary_to_asm(obj->ctx->addr + shdr->sh_offset,
+                                   sym->st_size,
+                                   &buf,
+                                   &buf_len);
+                if (ELF_SUCCESS != rc) {
+                        LOG(LOG_ERR, 0, "can't extract asm code from binary");
+                        ret = rc;
                         goto end;
                 }
-
-                memcpy(content->buf,
-                       obj->ctx->addr + shdr->sh_offset,
-                       sym->st_size);
         }
 
         ret = ELF_SUCCESS;
   end:
         if (bufp)
-                *bufp = content->buf;
+                *bufp = buf;
+        else
+                free(buf);
 
         if (buf_lenp)
-                *buf_lenp = content->buf_len;
+                *buf_lenp = buf_len;
 
         return ret;
 }
 
 static telf_status
-symentryfs_setcontent_info(void *obj_hdl,
-                           char **bufp,
-                           size_t *buf_lenp)
+symentryfs_bincode_getsize(void *obj_hdl,
+                           size_t *sizep)
 {
         telf_obj *obj = obj_hdl;
         telf_status ret;
-        telf_default_content *content = obj->data;
         Elf64_Sym *sym = obj->parent->data;
-        char *symname = NULL;
-        char tmpbuf[256];
+        size_t size = 0;
 
-        if (! content) {
-                content = malloc(sizeof *content);
-                if (! content) {
+        if (STT_FUNC == ELF32_ST_TYPE(sym->st_info) && sym->st_size)
+                size = sym->st_size;
+
+        ret = ELF_SUCCESS;
+  end:
+
+        if (sizep)
+                *sizep = size;
+
+        return ret;
+}
+
+static telf_status
+symentryfs_bincode_setcontent(void *obj_hdl,
+                              char **bufp,
+                              size_t *buf_lenp)
+{
+        telf_obj *obj = obj_hdl;
+        telf_status ret;
+        Elf64_Sym *sym = obj->parent->data;
+        Elf64_Shdr *shdr = obj->ctx->shdr + sym->st_shndx;
+        char *buf = NULL;
+        size_t buf_len = 0;
+
+        if (STT_FUNC == ELF32_ST_TYPE(sym->st_info) && sym->st_size) {
+                buf_len = sym->st_size;
+                buf = malloc(buf_len);
+                if (! buf) {
                         LOG(LOG_ERR, 0, "malloc: %s", strerror(errno));
                         ret = ELF_ENOMEM;
                         goto end;
                 }
 
-                memset(content, 0, sizeof *content);
+                memcpy(buf, obj->ctx->addr + shdr->sh_offset, sym->st_size);
         }
 
-        // sanity check
-        if (content->buf)
-                free(content->buf);
+        ret = ELF_SUCCESS;
+  end:
+        if (bufp)
+                *bufp = buf;
+        else
+                free(buf);
+
+        if (buf_lenp)
+                *buf_lenp = buf_len;
+
+        return ret;
+}
+
+static telf_status
+symentryfs_info_getsize(void *obj_hdl,
+                        size_t *sizep)
+{
+        telf_obj *obj = obj_hdl;
+        telf_status ret;
+        Elf64_Sym *sym = obj->parent->data;
+        char *symname = NULL;
+        char tmpbuf[256];
+        size_t size;
 
         /* default value */
         symname = "NONAME";
@@ -174,56 +186,159 @@ symentryfs_setcontent_info(void *obj_hdl,
                         symname = "UNRESOLVED";
         }
 
-        content->buf_len = sprintf(tmpbuf,
-                                   "value: %p\n"
-                                   "size: %zu\n"
-                                   "type: %s\n"
-                                   "bind: %s\n"
-                                   "name: %s\n",
-                                   sym ? (void *) sym->st_value : NULL,
-                                   sym ? sym->st_size : 0u,
-                                   sym_type_to_str(sym),
-                                   sym_bind_to_str(sym),
-                                   symname);
+        size = sprintf(tmpbuf,
+                       "value: %p\n"
+                       "size: %zu\n"
+                       "type: %s\n"
+                       "bind: %s\n"
+                       "name: %s\n",
+                       (void *) sym->st_value,
+                       sym->st_size,
+                       sym_type_to_str(sym),
+                       sym_bind_to_str(sym),
+                       symname);
 
-        content->buf = malloc(content->buf_len + 1);
-        if (! content->buf) {
+        ret = ELF_SUCCESS;
+  end:
+
+        if (sizep)
+                *sizep = size;
+
+        return ret;
+}
+
+static telf_status
+symentryfs_info_setcontent(void *obj_hdl,
+                           char **bufp,
+                           size_t *buf_lenp)
+{
+        telf_obj *obj = obj_hdl;
+        telf_status ret;
+        Elf64_Sym *sym = obj->parent->data;
+        char *symname = NULL;
+        char tmpbuf[256];
+        char *buf = NULL;
+        size_t buf_len;
+
+        /* default value */
+        symname = "NONAME";
+
+        if (sym->st_name) {
+                symname = ((ELF_SECTION_SYMTAB == obj->parent->type) ?
+                           elf_getsymname :
+                           elf_getdsymname)(obj->ctx, sym);
+
+                if (! symname || ! *symname)
+                        symname = "UNRESOLVED";
+        }
+
+        buf_len = sprintf(tmpbuf,
+                          "value: %p\n"
+                          "size: %zu\n"
+                          "type: %s\n"
+                          "bind: %s\n"
+                          "name: %s\n",
+                          (void *) sym->st_value,
+                          sym->st_size,
+                          sym_type_to_str(sym),
+                          sym_bind_to_str(sym),
+                          symname);
+
+        buf = malloc(buf_len + 1);
+        if (! buf) {
                 LOG(LOG_ERR, 0, "malloc: %s", strerror(errno));
                 ret = ELF_ENOMEM;
                 goto end;
         }
 
-        strncpy(content->buf, tmpbuf, content->buf_len);
-
-
-        LOG(LOG_DEBUG, 0, "buf: %s, @buf: %p", content->buf, (void *) content->buf);
+        strncpy(buf, tmpbuf, buf_len);
 
         ret = ELF_SUCCESS;
   end:
-        if (bufp) {
-                *bufp = content->buf;
-        } else {
-                free(content->buf);
-                content->buf = NULL;
-        }
+        if (bufp)
+                *bufp = buf;
+        else
+                free(buf);
 
         if (buf_lenp)
-                *buf_lenp = content->buf_len;
+                *buf_lenp = buf_len;
 
         return ret;
 }
 
+
 typedef struct {
         char *str;
+        tobj_getsize_func getsize_func;
         tobj_setcontent_func setcontent_func;
         tobj_freecontent_func freecontent_func;
 } telf_fcb;
 
 static telf_fcb symentryfs_fcb[] = {
-        { "code.bin", symentryfs_setcontent_bincode, symentryfs_freecontent },
-        /* { "code.asm", symentryfs_setcontent_asmcode, symentryfs_freecontent }, */
-        { "info", symentryfs_setcontent_info, symentryfs_freecontent },
+        {
+                "code.bin",
+                symentryfs_bincode_getsize,
+                symentryfs_bincode_setcontent,
+                symentryfs_freecontent
+        },
+
+        {
+                "code.asm",
+                symentryfs_asmcode_getsize,
+                symentryfs_asmcode_setcontent,
+                symentryfs_freecontent
+        },
+
+        {
+                "info",
+                symentryfs_info_getsize,
+                symentryfs_info_setcontent,
+                symentryfs_freecontent
+        },
 };
+
+static telf_status
+symentryfs_getattr(void *obj_hdl,
+                   telf_stat *stp)
+{
+        telf_obj *obj = obj_hdl;
+        telf_status ret;
+        telf_status rc;
+        telf_stat st;
+        int i;
+
+        memset(&st, 0, sizeof st);
+        st.st_mode |= ELF_S_IFREG;
+
+        for (i = 0; i < N_ELEMS(symentryfs_fcb); i++) {
+                telf_fcb *fcb = symentryfs_fcb + i;
+
+                if (0 == strcmp(obj->name, fcb->str)) {
+                        rc = fcb->getsize_func(obj, &st.st_size);
+                        if (ELF_SUCCESS != rc) {
+                                LOG(LOG_ERR, 0, "can't get size of '%s'",
+                                    obj->name);
+                                ret = rc;
+                                goto end;
+                        }
+                        break;
+                }
+        }
+
+        ret = ELF_SUCCESS;
+  end:
+        if (stp)
+                *stp = st;
+
+        return ret;
+}
+
+static void
+symentryfs_override_driver(telf_fs_driver *driver)
+{
+        driver->getattr = symentryfs_getattr;
+}
+
 
 telf_status
 symentryfs_build(telf_ctx *ctx,
@@ -248,6 +363,8 @@ symentryfs_build(telf_ctx *ctx,
 
                 entry->free_func = fcb->freecontent_func;
                 entry->fill_func = fcb->setcontent_func;
+
+                symentryfs_override_driver(entry->driver);
                 list_add(parent->entries, entry);
         }
 

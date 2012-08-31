@@ -20,6 +20,8 @@ typedef struct {
         size_t buf_len;
 } telf_default_content;
 
+
+typedef telf_status (* tobj_getsize_func)(void *, size_t *);
 typedef telf_status (* tobj_setcontent_func)(void *, char **, size_t *);
 typedef void (* tobj_freecontent_func)(void *);
 

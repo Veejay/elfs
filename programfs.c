@@ -27,60 +27,128 @@ programfs_freecontent(void *data)
 }
 
 static telf_status
-programfs_setcontent_code(void *obj_hdl,
+programfs_code_getsize(void *obj_hdl,
+                       size_t *sizep)
+{
+        telf_obj *obj = obj_hdl;
+        telf_status ret;
+        char realname[128];
+        Elf64_Shdr *shdr = NULL;
+        size_t size;
+
+        sprintf(realname, ".%s", obj->parent->name);
+        shdr = elf_getsectionbyname(ctx, realname);
+
+        size = shdr->sh_size;
+
+        ret = ELF_SUCCESS;
+  end:
+        if (sizep)
+                *sizep = size;
+
+        return ret;
+}
+
+static telf_status
+programfs_code_setcontent(void *obj_hdl,
                           char **bufp,
                           size_t *buf_lenp)
 {
         telf_obj *obj = obj_hdl;
         telf_status ret;
-        telf_default_content *content = obj->data;
         char realname[128];
         Elf64_Shdr *shdr = NULL;
+        char *buf = NULL;
+        size_t buf_len = 0;
 
         sprintf(realname, ".%s", obj->parent->name);
         shdr = elf_getsectionbyname(ctx, realname);
 
-        // sanity check
-        if (content->buf) {
-                free(content->buf);
-                content->buf = NULL;
-        }
+        buf_len = shdr->sh_size;
 
-        content->buf_len = shdr->sh_size;
-
-        if (content->buf_len) {
-                content->buf = malloc(content->buf_len);
-                if (! content->buf) {
+        if (buf_len) {
+                buf = malloc(buf_len);
+                if (! buf) {
                         LOG(LOG_ERR, 0, "malloc: %s", strerror(errno));
                         ret = ELF_ENOMEM;
                         goto end;
                 }
 
-                memcpy(content->buf,
-                       obj->ctx->addr + shdr->sh_offset,
-                       content->buf_len);
+                memcpy(buf, obj->ctx->addr + shdr->sh_offset, buf_len);
         }
 
         ret = ELF_SUCCESS;
   end:
         if (bufp)
-                *bufp = content->buf;
+                *bufp = buf;
+        else
+                free(buf);
 
         if (buf_lenp)
-                *buf_lenp = content->buf_len;
+                *buf_lenp = buf_len;
 
         return ret;
 }
 
 typedef struct {
         char *str;
+        tobj_getsize_func getsize_func;
         tobj_setcontent_func setcontent_func;
         tobj_freecontent_func freecontent_func;
 } telf_fcb;
 
 static telf_fcb programfs_fcb[] = {
-        { "code", programfs_setcontent_code, programfs_freecontent },
+        {
+                "code",
+                programfs_code_getsize,
+                programfs_code_setcontent,
+                programfs_freecontent
+        },
 };
+
+
+
+static telf_status
+programfs_getattr(void *obj_hdl,
+                  telf_stat *stp)
+{
+        telf_obj *obj = obj_hdl;
+        telf_status ret;
+        telf_status rc;
+        telf_stat st;
+        int i;
+
+        memset(&st, 0, sizeof st);
+        st.st_mode |= ELF_S_IFREG;
+
+        for (i = 0; i < N_ELEMS(programfs_fcb); i++) {
+                telf_fcb *fcb = programfs_fcb + i;
+
+                if (0 == strcmp(obj->name, fcb->str)) {
+                        rc = fcb->getsize_func(obj, &st.st_size);
+                        if (ELF_SUCCESS != rc) {
+                                LOG(LOG_ERR, 0, "can't get size of '%s'",
+                                    obj->name);
+                                ret = rc;
+                                goto end;
+                        }
+                        break;
+                }
+        }
+
+        ret = ELF_SUCCESS;
+  end:
+        if (stp)
+                *stp = st;
+
+        return ret;
+}
+
+static void
+programfs_override_driver(telf_fs_driver *driver)
+{
+        driver->getattr = programfs_getattr;
+}
 
 
 static void

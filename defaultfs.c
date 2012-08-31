@@ -18,27 +18,11 @@ defaultfs_getattr(void *obj_hdl,
         telf_status ret;
         telf_status rc;
         telf_obj *obj = obj_hdl;
-        size_t size;
-        telf_default_content *content;
 
         elf_obj_lock(obj);
 
         memcpy(st, &obj->st, sizeof *st);
         st->st_nlink = 1;
-
-        if (ELF_S_ISDIR(obj->st.st_mode)) {
-                st->st_size = 0;
-        } else {
-                /* we compute the content on-the-fly, in order to set the
-                 * correct file size: not very efficient but who care? */
-                rc = obj->fill_func(obj, NULL, &size);
-                if (ELF_SUCCESS != rc) {
-                        ret = rc;
-                        goto end;
-                }
-
-                st->st_size = size;
-        }
 
         ret = ELF_SUCCESS;
   end:
@@ -124,10 +108,12 @@ defaultfs_read(void *obj_hdl,
                ssize_t *sizep)
 {
         telf_obj *obj = obj_hdl;
-        telf_default_content *content = obj->data;
+        telf_default_content *content = NULL;
         telf_status ret;
 
         elf_obj_lock(obj);
+
+        content = obj->data;
 
         if (size > content->buf_len)
                 size = content->buf_len;
