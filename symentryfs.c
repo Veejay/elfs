@@ -263,6 +263,7 @@ symentryfs_info_setcontent(void *obj_hdl,
         if (buf_lenp)
                 *buf_lenp = buf_len;
 
+        LOG(LOG_DEBUG, 0, "ret=%s (%d)", elf_status_to_str(ret), ret);
         return ret;
 }
 
@@ -307,6 +308,10 @@ symentryfs_getattr(void *obj_hdl,
         telf_stat st;
         int i;
 
+        elf_obj_lock(obj);
+
+        LOG(LOG_DEBUG, 0, "name:%s data=%p", obj->name, obj->data);
+
         memset(&st, 0, sizeof st);
         st.st_mode |= ELF_S_IFREG;
 
@@ -327,9 +332,13 @@ symentryfs_getattr(void *obj_hdl,
 
         ret = ELF_SUCCESS;
   end:
+
+        elf_obj_unlock(obj);
+
         if (stp)
                 *stp = st;
 
+        LOG(LOG_DEBUG, 0, "ret=%s (%d)", elf_status_to_str(ret), ret);
         return ret;
 }
 

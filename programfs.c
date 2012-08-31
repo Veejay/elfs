@@ -118,6 +118,8 @@ programfs_getattr(void *obj_hdl,
         telf_stat st;
         int i;
 
+        elf_obj_lock(obj);
+
         memset(&st, 0, sizeof st);
         st.st_mode |= ELF_S_IFREG;
 
@@ -138,6 +140,8 @@ programfs_getattr(void *obj_hdl,
 
         ret = ELF_SUCCESS;
   end:
+        elf_obj_unlock(obj);
+
         if (stp)
                 *stp = st;
 
