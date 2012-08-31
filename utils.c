@@ -5,6 +5,7 @@
 
 #include <udis86.h>
 
+#include "log.h"
 #include "utils.h"
 
 
@@ -41,6 +42,11 @@ binary_to_asm(char *bin,
         ud_set_mode(&ud_obj, 64);
         ud_set_syntax(&ud_obj, UD_SYN_INTEL);
 
+        if (! bin_len || bin) {
+                ret = ELF_SUCCESS;
+                goto end;
+        }
+
         while (ud_disassemble(&ud_obj)) {
                 char line[64] = "";
                 size_t len;
@@ -49,6 +55,7 @@ binary_to_asm(char *bin,
 
                 tmpbuf = realloc(buf, buf_len + len);
                 if (! tmpbuf) {
+                        LOG(LOG_ERR, 0, "realloc: %s", strerror(errno));
                         free(buf);
                         buf = NULL;
                         ret = ELF_ENOMEM;
@@ -64,6 +71,7 @@ binary_to_asm(char *bin,
         if (buf) {
                 tmpbuf = realloc(buf, buf_len + 1);
                 if (! tmpbuf) {
+                        LOG(LOG_ERR, 0, "realloc: %s", strerror(errno));
                         free(buf);
                         buf = NULL;
                         ret = ELF_ENOMEM;
