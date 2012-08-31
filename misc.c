@@ -132,12 +132,12 @@ sym_bind_to_str(Elf64_Sym *sym)
         unsigned char b = ELF64_ST_BIND(sym->st_info);
 
         switch (b) {
-#define MAP(x) case STB_##x: return #x
-                MAP(LOCAL);
-                MAP(GLOBAL);
-                MAP(WEAK);
-                MAP(LOPROC);
-                MAP(HIPROC);
+#define MAP(x) case x: return #x
+                MAP(STB_LOCAL);
+                MAP(STB_GLOBAL);
+                MAP(STB_WEAK);
+                MAP(STB_LOPROC);
+                MAP(STB_HIPROC);
 #undef MAP
         }
 
@@ -153,14 +153,14 @@ sym_type_to_str(Elf64_Sym *sym)
         unsigned char t = ELF64_ST_TYPE(sym->st_info);
 
         switch (t) {
-#define MAP(x) case STT_##x: return #x
-                MAP(NOTYPE);
-                MAP(OBJECT);
-                MAP(FUNC);
-                MAP(SECTION);
-                MAP(FILE);
-                MAP(LOPROC);
-                MAP(HIPROC);
+#define MAP(x) case x: return #x
+                MAP(STT_NOTYPE);
+                MAP(STT_OBJECT);
+                MAP(STT_FUNC);
+                MAP(STT_SECTION);
+                MAP(STT_FILE);
+                MAP(STT_LOPROC);
+                MAP(STT_HIPROC);
 #undef MAP
         }
 
