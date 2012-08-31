@@ -33,21 +33,89 @@ typedef struct {
 } telf_stat;
 
 typedef enum {
-        ELF_O_RDONLY = (1u<<0),
-        ELF_O_RDWR   = (1u<<1),
-        ELF_O_WRONLY = (1u<<2),
-        ELF_O_TRUNC  = (1u<<3),
-        ELF_O_CREAT  = (1u<<4),
+        ELF_O_RDONLY = (1u << 0),
+        ELF_O_RDWR   = (1u << 1),
+        ELF_O_WRONLY = (1u << 2),
+        ELF_O_TRUNC  = (1u << 3),
+        ELF_O_CREAT  = (1u << 4),
 } telf_open_flags;
 
-typedef enum {
-        ELF_SUCCESS =  0,
-        ELF_FAILURE = -1,
-        ELF_ENOENT  = -2,
-        ELF_EIO     = -3,
-        ELF_ENOMEM  = -4,
-} telf_status;
+#define MAP(v) X(v, #v)
+#define ELF_TYPES_TABLE                                 \
+        MAP(ELF_SECTION_NULL)                           \
+        MAP(ELF_SECTION_PROGBITS)                       \
+        MAP(ELF_SECTION_PROGBITS_CODE)                  \
+        MAP(ELF_SECTION_SYMTAB)                         \
+        MAP(ELF_SECTION_STRTAB)                         \
+        MAP(ELF_SECTION_RELA)                           \
+        MAP(ELF_SECTION_HASH)                           \
+        MAP(ELF_SECTION_DYNAMIC)                        \
+        MAP(ELF_SECTION_NOTE)                           \
+        MAP(ELF_SECTION_NOBITS)                         \
+        MAP(ELF_SECTION_REL)                            \
+        MAP(ELF_SECTION_SHLIB)                          \
+        MAP(ELF_SECTION_DYNSYM)                         \
+        MAP(ELF_SECTION_INIT_ARRAY)                     \
+        MAP(ELF_SECTION_FINI_ARRAY)                     \
+        MAP(ELF_SECTION_PREINIT_ARRAY)                  \
+        MAP(ELF_SECTION_GROUP)                          \
+        MAP(ELF_SECTION_SYMTAB_SHNDX)                   \
+        MAP(ELF_SECTION_NUM)                            \
+        MAP(ELF_SECTION_LOOS)                           \
+        MAP(ELF_SECTION_GNU_ATTRIBUTES)                 \
+        MAP(ELF_SECTION_GNU_HASH)                       \
+        MAP(ELF_SECTION_GNU_LIBLIST)                    \
+        MAP(ELF_SECTION_CHECKSUM)                       \
+        MAP(ELF_SECTION_LOSUNW)                         \
+        MAP(ELF_SECTION_SUNW_move)                      \
+        MAP(ELF_SECTION_SUNW_COMDAT)                    \
+        MAP(ELF_SECTION_SUNW_syminfo)                   \
+        MAP(ELF_SECTION_GNU_verdef)                     \
+        MAP(ELF_SECTION_GNU_verneed)                    \
+        MAP(ELF_SECTION_GNU_versym)                     \
+        MAP(ELF_SECTION_HISUNW)                         \
+        MAP(ELF_SECTION_HIOS)                           \
+        MAP(ELF_SECTION_LOPROC)                         \
+        MAP(ELF_SECTION_HIPROC)                         \
+        MAP(ELF_SECTION_LOUSER)                         \
+        MAP(ELF_SECTION_HIUSER)                         \
+        MAP(ELF_SECTION_OTHER)                          \
+        MAP(ELF_SECTION)                                \
+        MAP(ELF_SYMBOL)                                 \
+        MAP(ELF_SYMBOL_ENTRY)                           \
+        MAP(ELF_ROOTDIR)
 
+#define X(a, b) a,
+typedef enum {
+        ELF_TYPES_TABLE
+} telf_type;
+#undef X
+#undef MAP
+
+#define MAP(v) X(v, #v)
+#define ELF_STATUS_TABLE                        \
+        MAP(ELF_SUCCESS)                        \
+        MAP(ELF_FAILURE)                        \
+        MAP(ELF_ENOENT)                         \
+        MAP(ELF_EIO)                            \
+        MAP(ELF_ENOMEM)                         \
+        MAP(ELF_EPERM)
+
+#define X(a, b) a,
+typedef enum {
+        ELF_STATUS_TABLE
+} telf_status;
+#undef X
+#undef MAP
+
+typedef enum {
+        ELF_ST_SIZE  = (1u << 0),
+        ELF_ST_MODE  = (1u << 1),
+        ELF_ST_ATIME = (1u << 2),
+        ELF_ST_MTIME = (1u << 3),
+        ELF_ST_CTIME = (1u << 4),
+        ELF_ST_NLINK = (1u << 5),
+} telf_st_flags;
 
 /* file */
 typedef telf_status (* telf_fs_getattr)(void *obj, telf_stat *st);
