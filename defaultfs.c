@@ -21,6 +21,8 @@ defaultfs_getattr(void *obj_hdl,
         size_t size;
         telf_default_content *content;
 
+        elf_obj_lock(obj);
+
         memcpy(st, &obj->st, sizeof *st);
         st->st_nlink = 1;
 
@@ -47,6 +49,9 @@ defaultfs_getattr(void *obj_hdl,
 
         ret = ELF_SUCCESS;
   end:
+
+        elf_obj_unlock(obj);
+
         return ret;
 }
 
@@ -61,12 +66,16 @@ defaultfs_open(char *path,
         char *buf;
         size_t buf_len;
         telf_default_content *content;
+        int locked = 0;
 
         rc = elf_namei(ctx, path, &obj);
         if (ELF_SUCCESS != rc) {
                 ret = rc;
                 goto end;
         }
+
+        elf_obj_lock(obj);
+        locked = 1;
 
         content = malloc(sizeof *content);
         if (! content) {
@@ -88,6 +97,8 @@ defaultfs_open(char *path,
 
         ret = ELF_SUCCESS;
   end:
+        if (locked)
+                elf_obj_unlock(obj);
 
         if (objp)
                 *objp = obj;
@@ -100,10 +111,14 @@ defaultfs_release(void *obj_hdl)
 {
         telf_obj *obj = obj_hdl;
 
+        elf_obj_lock(obj);
+
         if (obj->free_func) {
                 obj->free_func(obj->data);
                 obj->data = NULL;
         }
+
+        elf_obj_unlock(obj);
 
         return ELF_SUCCESS;
 }
@@ -119,6 +134,8 @@ defaultfs_read(void *obj_hdl,
         telf_default_content *content = obj->data;
         telf_status ret;
 
+        elf_obj_lock(obj);
+
         if (size > content->buf_len)
                 size = content->buf_len;
 
@@ -126,6 +143,8 @@ defaultfs_read(void *obj_hdl,
 
         if (sizep)
                 *sizep = size;
+
+        elf_obj_unlock(obj);
 
         return ELF_SUCCESS;
 }
@@ -243,6 +262,7 @@ defaultfs_readdir(void *obj_hdl,
         int rc;
         telf_dir_hdl *dir_hdl = NULL;
         telf_dirent dirent;
+        int locked = 0;
 
         dir_hdl = alloca(sizeof *dir_hdl);
         if (! dir_hdl) {
@@ -253,6 +273,9 @@ defaultfs_readdir(void *obj_hdl,
 
         memset(&dirent, 0, sizeof dirent);
 
+        elf_obj_lock(obj);
+        locked = 1;
+
         dir_ctor(ctx, obj, dir_hdl);
 
         while (0 == readdir_getdirent(dir_hdl, &dirent)) {
@@ -262,6 +285,9 @@ defaultfs_readdir(void *obj_hdl,
 
         ret = ELF_SUCCESS;
   err:
+        if (locked)
+                elf_obj_unlock(obj);
+
         return ret;
 }
 

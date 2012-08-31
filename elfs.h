@@ -12,58 +12,6 @@
 #include "fs-structs.h"
 #include "list.h"
 
-#define MAP(v) X(v, #v)
-#define ELF_TYPES_TABLE                                 \
-        MAP(ELF_SECTION_NULL)                           \
-        MAP(ELF_SECTION_PROGBITS)                       \
-        MAP(ELF_SECTION_PROGBITS_CODE)                  \
-        MAP(ELF_SECTION_SYMTAB)                         \
-        MAP(ELF_SECTION_STRTAB)                         \
-        MAP(ELF_SECTION_RELA)                           \
-        MAP(ELF_SECTION_HASH)                           \
-        MAP(ELF_SECTION_DYNAMIC)                        \
-        MAP(ELF_SECTION_NOTE)                           \
-        MAP(ELF_SECTION_NOBITS)                         \
-        MAP(ELF_SECTION_REL)                            \
-        MAP(ELF_SECTION_SHLIB)                          \
-        MAP(ELF_SECTION_DYNSYM)                         \
-        MAP(ELF_SECTION_INIT_ARRAY)                     \
-        MAP(ELF_SECTION_FINI_ARRAY)                     \
-        MAP(ELF_SECTION_PREINIT_ARRAY)                  \
-        MAP(ELF_SECTION_GROUP)                          \
-        MAP(ELF_SECTION_SYMTAB_SHNDX)                   \
-        MAP(ELF_SECTION_NUM)                            \
-        MAP(ELF_SECTION_LOOS)                           \
-        MAP(ELF_SECTION_GNU_ATTRIBUTES)                 \
-        MAP(ELF_SECTION_GNU_HASH)                       \
-        MAP(ELF_SECTION_GNU_LIBLIST)                    \
-        MAP(ELF_SECTION_CHECKSUM)                       \
-        MAP(ELF_SECTION_LOSUNW)                         \
-        MAP(ELF_SECTION_SUNW_move)                      \
-        MAP(ELF_SECTION_SUNW_COMDAT)                    \
-        MAP(ELF_SECTION_SUNW_syminfo)                   \
-        MAP(ELF_SECTION_GNU_verdef)                     \
-        MAP(ELF_SECTION_GNU_verneed)                    \
-        MAP(ELF_SECTION_GNU_versym)                     \
-        MAP(ELF_SECTION_HISUNW)                         \
-        MAP(ELF_SECTION_HIOS)                           \
-        MAP(ELF_SECTION_LOPROC)                         \
-        MAP(ELF_SECTION_HIPROC)                         \
-        MAP(ELF_SECTION_LOUSER)                         \
-        MAP(ELF_SECTION_HIUSER)                         \
-        MAP(ELF_SECTION_OTHER)                          \
-        MAP(ELF_SECTION)                                \
-        MAP(ELF_SYMBOL)                                 \
-        MAP(ELF_SYMBOL_ENTRY)                           \
-        MAP(ELF_ROOTDIR)
-
-#define X(a, b) a,
-typedef enum {
-        ELF_TYPES_TABLE
-} telf_type;
-#undef X
-#undef MAP
-
 struct self_ctx;
 
 
@@ -90,6 +38,8 @@ typedef struct self_obj {
         telf_type type;          /* type of elf object */
         telf_stat st;            /* our own struct stat */
         tlist *entries;          /* if directory: list of entries */
+
+        pthread_mutex_t lock;
 } telf_obj;
 
 typedef struct self_ctx {
@@ -117,5 +67,7 @@ typedef struct self_ctx {
 
 
 telf_obj *elf_obj_new(telf_ctx *, char *, telf_obj *, telf_type, telf_ftype);
-
+void elf_obj_free(telf_obj *obj);
+void elf_obj_lock(telf_obj *obj);
+void elf_obj_unlock(telf_obj *obj);
 #endif /* ELFS_H */

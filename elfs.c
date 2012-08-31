@@ -87,7 +87,7 @@ elf_type_to_str(telf_type type)
         return elf_type_names[type];
 }
 
-static void
+void
 elf_obj_free(telf_obj *obj)
 {
         LOG(LOG_DEBUG, 0, "free obj @%p, name=%s", (void *) obj, obj->name);
@@ -101,7 +101,22 @@ elf_obj_free(telf_obj *obj)
         if (obj->driver)
                 free(obj->driver);
 
+        if (obj->data)
+                obj->free_func(obj->data);
+
         free(obj);
+}
+
+void
+elf_obj_lock(telf_obj *obj)
+{
+        pthread_mutex_lock(&obj->lock);
+}
+
+void
+elf_obj_unlock(telf_obj *obj)
+{
+        pthread_mutex_unlock(&obj->lock);
 }
 
 static void
@@ -128,7 +143,6 @@ elf_obj_new(telf_ctx *ctx,
             telf_ftype ftype) /* from fs pov: directory, regular, ... */
 {
         telf_obj *obj = NULL;
-        telf_fs_driver *driver = NULL;
 
         LOG(LOG_DEBUG, 0, "build object: path=%s, parent=%p, type=%s",
             path, (void *) parent, elf_type_to_str(type));
@@ -171,13 +185,12 @@ elf_obj_new(telf_ctx *ctx,
                 goto err;
         }
 
+        pthread_mutex_init(&obj->lock, NULL);
+
         return obj;
 
   err:
         elf_obj_free(obj);
-
-        if (driver)
-                free(driver);
 
         return NULL;
 }
