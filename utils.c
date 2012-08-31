@@ -42,7 +42,7 @@ binary_to_asm(char *bin,
         ud_set_mode(&ud_obj, 64);
         ud_set_syntax(&ud_obj, UD_SYN_INTEL);
 
-        if (! bin_len || bin) {
+        if (! bin_len || ! bin) {
                 ret = ELF_SUCCESS;
                 goto end;
         }
