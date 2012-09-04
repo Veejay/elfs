@@ -23,7 +23,7 @@ And now, with root privileges:
 
 If you want to inspect the fdup(1) program, and mount its image into /tmp/elf:
 
-        $ elfs /bin/elf /usr/local/bin/fdup
+        $ elfs /tmp/elf /usr/local/bin/fdup
 
         $ ls -l /tmp/elf/
         total 0
