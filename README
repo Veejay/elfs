@@ -21,9 +21,9 @@ And now, with root privileges:
 1. USAGE
 ========
 
-If you want to inspect the ls(1) program, and mount its image into /tmp/ls:
+If you want to inspect the fdup(1) program, and mount its image into /tmp/elf:
 
-        $ elfs /bin/ls /tmp/ls
+        $ elfs /bin/elf /usr/local/bin/fdup
 
         $ ls -l /tmp/elf/
         total 0
@@ -31,50 +31,108 @@ If you want to inspect the ls(1) program, and mount its image into /tmp/ls:
 
         $ ls -l /tmp/elf/sections/
         total 0
-        drwx------ 1 root root 0 1970-01-01 01:00 bss
-        drwx------ 1 root root 0 1970-01-01 01:00 comment
-        drwx------ 1 root root 0 1970-01-01 01:00 ctors
-        drwx------ 1 root root 0 1970-01-01 01:00 data
-        drwx------ 1 root root 0 1970-01-01 01:00 dtors
-        drwx------ 1 root root 0 1970-01-01 01:00 dynamic
-        drwx------ 1 root root 0 1970-01-01 01:00 dynstr
-        drwx------ 1 root root 0 1970-01-01 01:00 dynsym
-        drwx------ 1 root root 0 1970-01-01 01:00 eh_frame
-        drwx------ 1 root root 0 1970-01-01 01:00 eh_frame_hdr
-        drwx------ 1 root root 0 1970-01-01 01:00 fini
-        drwx------ 1 root root 0 1970-01-01 01:00 gnu.hash
-        drwx------ 1 root root 0 1970-01-01 01:00 gnu.version
-        drwx------ 1 root root 0 1970-01-01 01:00 gnu.version_r
-        drwx------ 1 root root 0 1970-01-01 01:00 got
-        drwx------ 1 root root 0 1970-01-01 01:00 got.plt
-        drwx------ 1 root root 0 1970-01-01 01:00 init
-        drwx------ 1 root root 0 1970-01-01 01:00 interp
-        drwx------ 1 root root 0 1970-01-01 01:00 jcr
-        drwx------ 1 root root 0 1970-01-01 01:00 noname.0x7f3afb0bea88
-        drwx------ 1 root root 0 1970-01-01 01:00 note.ABI-tag
-        drwx------ 1 root root 0 1970-01-01 01:00 note.gnu.build-id
-        drwx------ 1 root root 0 1970-01-01 01:00 plt
-        drwx------ 1 root root 0 1970-01-01 01:00 rela.dyn
-        drwx------ 1 root root 0 1970-01-01 01:00 rela.plt
-        drwx------ 1 root root 0 1970-01-01 01:00 rodata
-        drwx------ 1 root root 0 1970-01-01 01:00 shstrtab
-        drwx------ 1 root root 0 1970-01-01 01:00 strtab
-        drwx------ 1 root root 0 1970-01-01 01:00 symtab
-        drwx------ 1 root root 0 1970-01-01 01:00 text
+        drw------- 1 root root 0 1970-01-01 01:00 bss
+        d--------- 1 root root 0 1970-01-01 01:00 comment
+        drw------- 1 root root 0 1970-01-01 01:00 ctors
+        drw------- 1 root root 0 1970-01-01 01:00 data
+        d--------- 1 root root 0 1970-01-01 01:00 debug_abbrev
+        d--------- 1 root root 0 1970-01-01 01:00 debug_aranges
+        d--------- 1 root root 0 1970-01-01 01:00 debug_info
+        d--------- 1 root root 0 1970-01-01 01:00 debug_line
+        d--------- 1 root root 0 1970-01-01 01:00 debug_loc
+        d--------- 1 root root 0 1970-01-01 01:00 debug_macinfo
+        d--------- 1 root root 0 1970-01-01 01:00 debug_pubnames
+        d--------- 1 root root 0 1970-01-01 01:00 debug_pubtypes
+        d--------- 1 root root 0 1970-01-01 01:00 debug_ranges
+        d--------- 1 root root 0 1970-01-01 01:00 debug_str
+        drw------- 1 root root 0 1970-01-01 01:00 dtors
+        drw------- 1 root root 0 1970-01-01 01:00 dynamic
+        dr-------- 1 root root 0 1970-01-01 01:00 dynstr
+        dr-------- 1 root root 0 1970-01-01 01:00 dynsym
+        dr-------- 1 root root 0 1970-01-01 01:00 eh_frame
+        dr-------- 1 root root 0 1970-01-01 01:00 eh_frame_hdr
+        dr-x------ 1 root root 0 1970-01-01 01:00 fini
+        dr-------- 1 root root 0 1970-01-01 01:00 gnu.hash
+        dr-------- 1 root root 0 1970-01-01 01:00 gnu.version
+        dr-------- 1 root root 0 1970-01-01 01:00 gnu.version_r
+        drw------- 1 root root 0 1970-01-01 01:00 got
+        drw------- 1 root root 0 1970-01-01 01:00 got.plt
+        dr-x------ 1 root root 0 1970-01-01 01:00 init
+        dr-------- 1 root root 0 1970-01-01 01:00 interp
+        drw------- 1 root root 0 1970-01-01 01:00 jcr
+        d--------- 1 root root 0 1970-01-01 01:00 noname.0x7f14e3a863c0
+        dr-------- 1 root root 0 1970-01-01 01:00 note.ABI-tag
+        dr-------- 1 root root 0 1970-01-01 01:00 note.gnu.build-id
+        dr-x------ 1 root root 0 1970-01-01 01:00 plt
+        dr-------- 1 root root 0 1970-01-01 01:00 rela.dyn
+        dr-------- 1 root root 0 1970-01-01 01:00 rela.plt
+        dr-------- 1 root root 0 1970-01-01 01:00 rodata
+        d--------- 1 root root 0 1970-01-01 01:00 shstrtab
+        d--------- 1 root root 0 1970-01-01 01:00 strtab
+        d--------- 1 root root 0 1970-01-01 01:00 symtab
+        dr-x------ 1 root root 0 1970-01-01 01:00 text
 
-        $ cat /tmp/elf/sections/symtab/_start/info
-        num: 0
-        value: 0x7f3afb0bf0b8
-        size: 0
-        type: FUNC
-        bind: GLOBAL
-        vis:
-        ndx: none
-        name: UNRESOLVED
+We set the rwx bits, according to the Section Header flags:
+        SHR_WRITE     -> w bit
+        SHR_ALLOC     -> r bit
+        SHR_EXECINSTR -> x bits
 
-        $ od -x -N32 /tmp/elf/sections/plt/code
-        0000000 35ff 32da 0020 25ff 32dc 0020 1f0f 0040
-        0000020 25ff 32da 0020 0068 0000 e900 ffe0 ffff
+        $ ll /tmp/elf/sections/symtab/dup_cmp_gid/
+        total 0
+        ---------- 0 root root 217 1970-01-01 01:00 code.asm
+        ---------- 0 root root  44 1970-01-01 01:00 code.bin
+        ---------- 0 root root  74 1970-01-01 01:00 info
+
+        $ cat /tmp/elf/sections/symtab/dup_cmp_gid/info
+        value: 0x401b00
+        size: 44
+        type: STT_FUNC
+        bind: STB_LOCAL
+        name: GLIBC_2.3.4
+
+        $ od -t x1 /tmp/elf/sections/symtab/dup_cmp_gid/code.bin
+        0000000 55 48 89 e5 48 89 7d f8 48 89 75 f0 48 8b 45 f8
+        0000020 8b 50 20 48 8b 45 f0 8b 40 20 39 c2 75 07 b8 00
+        0000040 00 00 00 eb 05 b8 ff ff ff ff c9 c3
+
+Let's see the code associated to this symbol (it's ok, since it's a function,
+type STT_FUNC):
+
+        $ cat /tmp/elf/sections/symtab/dup_cmp_gid/code.asm
+        push rbp
+        mov rbp, rsp
+        mov [rbp-0x8], rdi
+        mov [rbp-0x10], rsi
+        mov rax, [rbp-0x8]
+        mov edx, [rax+0x20]
+        mov rax, [rbp-0x10]
+        mov eax, [rax+0x20]
+        cmp edx, eax
+        jnz 0x25
+        mov eax, 0x0
+        jmp 0x2a
+        mov eax, 0xffffffff
+        leave
+        ret
+
+We can check that the code is correct, taking a look directly at the binary:
+
+       $ readelf -s /usr/local/bin/fdup | grep dup_cmp_gid
+       62: 0000000000401b00    44 FUNC    LOCAL  DEFAULT   13 dup_cmp_gid
+
+We now that on Intel 64 bits architectures, on Linux, the base address where
+binaries are loaded at the virtual memory address 0x400000 (0x804800 for 32
+bits):
+
+       $ echo 'ibase=16;401B00-400000' | bc
+       6912
+
+       $ od -t x1 -j6912 -N44 fdup
+       0015400 55 48 89 e5 48 89 7d f8 48 89 75 f0 48 8b 45 f8
+       0015420 8b 50 20 48 8b 45 f0 8b 40 20 39 c2 75 07 b8 00
+       0015440 00 00 00 eb 05 b8 ff ff ff ff c9 c3
+       0015454
+
 
 
 For more informations, just type:
