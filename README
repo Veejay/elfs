@@ -120,14 +120,14 @@ We can check that the code is correct, taking a look directly at the binary:
        $ readelf -s /usr/local/bin/fdup | grep dup_cmp_gid
        62: 0000000000401b00    44 FUNC    LOCAL  DEFAULT   13 dup_cmp_gid
 
-We now that on Intel 64 bits architectures, on Linux, the base address where
-binaries are loaded at the virtual memory address 0x400000 (0x804800 for 32
+We know that on Intel 64 bits architectures, on Linux, the base address where
+binaries are loaded is at the virtual memory address 0x400000 (0x804800 for 32
 bits):
 
        $ echo 'ibase=16;401B00-400000' | bc
        6912
 
-       $ od -t x1 -j6912 -N44 fdup
+       $ od -t x1 -j6912 -N44 /usr/local/bin/fdup
        0015400 55 48 89 e5 48 89 7d f8 48 89 75 f0 48 8b 45 f8
        0015420 8b 50 20 48 8b 45 f0 8b 40 20 39 c2 75 07 b8 00
        0015440 00 00 00 eb 05 b8 ff ff ff ff c9 c3
