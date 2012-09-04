@@ -33,7 +33,7 @@ binary_to_asm(char *bin,
 {
         telf_status ret;
         char *buf = NULL;
-        char buf_len = 0;
+        size_t buf_len = 0;
         ud_t ud_obj;
         char *tmpbuf = NULL;
 
