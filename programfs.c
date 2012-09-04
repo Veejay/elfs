@@ -167,8 +167,6 @@ section_ctor_cb(void *obj_hdl,
         if (ELF_SECTION_PROGBITS != obj->type)
                 return;
 
-        LOG(LOG_ERR, 0, "name=%s", obj->name);
-
         for (i = 0; i < N_ELEMS(programfs_fcb); i++) {
 
                 telf_fcb *fcb = programfs_fcb + i;
@@ -182,6 +180,8 @@ section_ctor_cb(void *obj_hdl,
 
                 entry->free_func = fcb->freecontent_func;
                 entry->fill_func = fcb->setcontent_func;
+
+                programfs_override_driver(entry->driver);
                 list_add(obj->entries, entry);
         }
 
