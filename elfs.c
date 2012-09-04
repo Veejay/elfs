@@ -231,6 +231,38 @@ elf_sanity_check(unsigned char *addr)
         return ret;
 }
 
+static void
+elf_compute_base_vaddr(telf_ctx *ctx)
+{
+        /*
+         * ELF format, chapter 2, section "program header",
+         * subsection "base address"
+         *
+         * To compute the base address, one determines the
+         * memory address associated with the lowest p_vaddr value for a
+         * PT_LOAD segment. One then obtains the base address by truncating
+         * the memory address to the nearest multiple of the maximum page
+         * size.
+         */
+
+        int i;
+        unsigned long min_vaddr = ~0;
+
+        for (i = 0; i < ctx->ehdr->e_phnum; i++) {
+                Elf64_Phdr *phdr = ctx->phdr + i;
+
+                if (PT_LOAD != phdr->p_type)
+                        continue;
+
+                if (phdr->p_vaddr < min_vaddr)
+                        min_vaddr = phdr->p_vaddr;
+        }
+
+        ctx->base_vaddr = (min_vaddr & ~(sysconf(_SC_PAGESIZE) -1));
+
+        LOG(LOG_DEBUG, 0, "base virtual address: %p", (void *) ctx->base_vaddr);
+}
+
 static telf_status
 elf_mmap_internal(telf_ctx *ctx)
 {
@@ -270,8 +302,11 @@ elf_mmap_internal(telf_ctx *ctx)
 
         ctx->ehdr = (Elf64_Ehdr *) addr;
         ctx->shdr = (Elf64_Shdr *) (ctx->addr + ctx->ehdr->e_shoff);
+        ctx->phdr = (Elf64_Phdr *) (ctx->addr + ctx->ehdr->e_phoff);
 
-        LOG(LOG_DEBUG, 0, "elf hdr: %p", addr);
+        elf_compute_base_vaddr(ctx);
+
+        LOG(LOG_DEBUG, 0, "elf header: %p", addr);
 
         ret = ELF_SUCCESS;
   err:

@@ -15,7 +15,6 @@ telf_ctx *ctx;
 
 
 #define CHUNK_SIZE 4096
-#define LINUX64_BASE_ADDR 0x400000
 
 static void
 symentryfs_freecontent(void *data)
@@ -46,7 +45,7 @@ symentryfs_asmcode_getsize(void *obj_hdl,
         size_t offset;
 
         if (STT_FUNC == ELF32_ST_TYPE(sym->st_info) && sym->st_size) {
-                offset = sym->st_value - LINUX64_BASE_ADDR;
+                offset = sym->st_value - obj->ctx->base_vaddr;
                 rc = binary_to_asm(obj->ctx->addr + offset,
                                    sym->st_size,
                                    NULL,
@@ -84,7 +83,7 @@ symentryfs_asmcode_setcontent(void *obj_hdl,
         size_t offset;
 
         if (STT_FUNC == ELF32_ST_TYPE(sym->st_info) && sym->st_size) {
-                offset = sym->st_value - LINUX64_BASE_ADDR;
+                offset = sym->st_value - obj->ctx->base_vaddr;
                 rc = binary_to_asm(obj->ctx->addr + offset,
                                    sym->st_size,
                                    &buf,
@@ -145,7 +144,7 @@ symentryfs_bincode_setcontent(void *obj_hdl,
 
         if (STT_FUNC == ELF32_ST_TYPE(sym->st_info) && sym->st_size) {
                 buf_len = sym->st_size;
-                offset = sym->st_value - LINUX64_BASE_ADDR;
+                offset = sym->st_value - obj->ctx->base_vaddr;
                 buf = malloc(buf_len);
                 if (! buf) {
                         LOG(LOG_ERR, 0, "malloc: %s", strerror(errno));

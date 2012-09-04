@@ -54,6 +54,8 @@ typedef struct self_ctx {
         unsigned char class;    /* ELFCLASS32 or ELFCLASS64 */
         Elf64_Ehdr *ehdr;       /* elf header */
         Elf64_Shdr *shdr;       /* sections header */
+        Elf64_Phdr *phdr;       /* program header */
+        Elf64_Addr base_vaddr;  /* the virtual base address */
         int n_sections;         /* number of sections */
 
         Elf64_Sym *symtab;      /* symbol table */
