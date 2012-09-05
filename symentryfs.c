@@ -11,10 +11,7 @@
 #include "elfs.h"
 #include "defaultfs.h"
 
-telf_ctx *ctx;
-
-
-#define CHUNK_SIZE 4096
+extern telf_ctx *ctx;
 
 static void
 symentryfs_freecontent(void *data)
@@ -168,61 +165,16 @@ symentryfs_bincode_setcontent(void *obj_hdl,
 }
 
 static telf_status
-symentryfs_info_getsize(void *obj_hdl,
-                        size_t *sizep)
+symentryfs_gen_info(telf_obj *obj,
+                    Elf64_Sym *sym,
+                    char **bufp,
+                    size_t *buf_lenp)
 {
-        telf_obj *obj = obj_hdl;
-        telf_status ret;
-        Elf64_Sym *sym = obj->parent->data;
         char *symname = NULL;
-        char tmpbuf[256];
-        size_t size;
-
-        /* default value */
-        symname = "NONAME";
-
-        if (sym->st_name) {
-                symname = ((ELF_SECTION_SYMTAB == obj->parent->type) ?
-                           elf_getsymname :
-                           elf_getdsymname)(obj->ctx, sym);
-
-                if (! symname || ! *symname)
-                        symname = "UNRESOLVED";
-        }
-
-        size = sprintf(tmpbuf,
-                       "value: %p\n"
-                       "size: %zu\n"
-                       "type: %s\n"
-                       "bind: %s\n"
-                       "name: %s\n",
-                       (void *) sym->st_value,
-                       sym->st_size,
-                       sym_type_to_str(sym),
-                       sym_bind_to_str(sym),
-                       symname);
-
-        ret = ELF_SUCCESS;
-  end:
-
-        if (sizep)
-                *sizep = size;
-
-        return ret;
-}
-
-static telf_status
-symentryfs_info_setcontent(void *obj_hdl,
-                           char **bufp,
-                           size_t *buf_lenp)
-{
-        telf_obj *obj = obj_hdl;
-        telf_status ret;
-        Elf64_Sym *sym = obj->parent->data;
-        char *symname = NULL;
-        char tmpbuf[256];
         char *buf = NULL;
-        size_t buf_len;
+        size_t buf_len = 0;
+        char tmpbuf[1024] = "";
+        telf_status ret;
 
         /* default value */
         symname = "NONAME";
@@ -248,14 +200,17 @@ symentryfs_info_setcontent(void *obj_hdl,
                           sym_bind_to_str(sym),
                           symname);
 
-        buf = malloc(buf_len + 1);
-        if (! buf) {
-                LOG(LOG_ERR, 0, "malloc: %s", strerror(errno));
-                ret = ELF_ENOMEM;
-                goto end;
-        }
+        if (bufp) {
+                buf = malloc(buf_len + 1);
+                if (! buf) {
+                        LOG(LOG_ERR, 0, "malloc: %s", strerror(errno));
+                        ret = ELF_ENOMEM;
+                        goto end;
+                }
 
-        strncpy(buf, tmpbuf, buf_len);
+                strncpy(buf, tmpbuf, buf_len);
+                buf[buf_len] = 0;
+        }
 
         ret = ELF_SUCCESS;
   end:
@@ -266,6 +221,50 @@ symentryfs_info_setcontent(void *obj_hdl,
 
         if (buf_lenp)
                 *buf_lenp = buf_len;
+
+        return ret;
+}
+
+static telf_status
+symentryfs_info_getsize(void *obj_hdl,
+                        size_t *sizep)
+{
+        telf_obj *obj = obj_hdl;
+        telf_status ret;
+        telf_status rc;
+        Elf64_Sym *sym = obj->parent->data;
+
+        rc = symentryfs_gen_info(obj, sym, NULL, sizep);
+        if (ELF_SUCCESS != rc) {
+                LOG(LOG_ERR, 0, "Can't generate info for entry");
+                ret = rc;
+                goto end;
+        }
+
+        ret = ELF_SUCCESS;
+  end:
+        return ret;
+}
+
+static telf_status
+symentryfs_info_setcontent(void *obj_hdl,
+                           char **bufp,
+                           size_t *buf_lenp)
+{
+        telf_obj *obj = obj_hdl;
+        telf_status ret;
+        telf_status rc;
+        Elf64_Sym *sym = obj->parent->data;
+
+        rc = symentryfs_gen_info(obj, sym, bufp, buf_lenp);
+        if (ELF_SUCCESS != rc) {
+                LOG(LOG_ERR, 0, "Can't generate info for entry");
+                ret = rc;
+                goto end;
+        }
+
+        ret = ELF_SUCCESS;
+  end:
 
         LOG(LOG_DEBUG, 0, "ret=%s (%d)", elf_status_to_str(ret), ret);
         return ret;

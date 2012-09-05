@@ -83,7 +83,8 @@ typedef enum {
         MAP(ELF_SECTION)                                \
         MAP(ELF_SYMBOL)                                 \
         MAP(ELF_SYMBOL_ENTRY)                           \
-        MAP(ELF_ROOTDIR)
+        MAP(ELF_ROOTDIR)                                \
+        MAP(ELF_ROOTDIR_ENTRY)
 
 #define X(a, b) a,
 typedef enum {
