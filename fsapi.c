@@ -73,9 +73,6 @@ elf_namei(telf_ctx *ctx,
 
         while (p) {
 
-                while ('/' == *p)
-                        p++;
-
                 start = p;
 
                 while (p && *p && '/' != *p)
@@ -102,6 +99,9 @@ elf_namei(telf_ctx *ctx,
                         ret = ELF_ENOENT;
                         goto end;
                 }
+
+                while ('/' == *p)
+                        p++;
 
                 /* end of the path */
                 if (NULL == p || 0 == *p)
