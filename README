@@ -27,7 +27,36 @@ If you want to inspect the fdup(1) program, and mount its image into /tmp/elf:
 
         $ ls -l /tmp/elf/
         total 0
-        drwx------ 1 root root 0 1970-01-01 01:00 sections
+        ---------- 0 root root 634 1970-01-01 01:00 info
+        d--------- 1 root root   0 1970-01-01 01:00 libs
+        d--------- 1 root root   0 1970-01-01 01:00 sections
+
+The 'info' file contains ELF Header informations (almost the same format than readelf -h):
+
+        $ cat /tmp/elf/info
+        Ident:                             7f 45 4c 46 02 01 01 00 00 00 00 00 00 00 00 00
+        Version:                           1
+        Class:                             64
+        Type:                              EXEC (Executable file)
+        Version:                           1
+        ELF Header size:                   64 bytes
+        Entry point:                       0x400f70
+        Program Header offset:             64 bytes
+        Program Header entry size:         56 bytes
+        Number of Program Header entries:  9
+        Section Header offset:             17352 bytes
+        Section Header entry size:         64 bytes
+        Number of Section Header entries:  30
+        SH string table index:             27
+
+Check the libraries?
+
+        $ ls -l /tmp/elf/libs
+        total 0
+        -rwxrwxrwx 0 root root 9 1970-01-01 01:00 libc.so.6
+
+
+If you want to inspect the sections:
 
         $ ls -l /tmp/elf/sections/
         total 0
@@ -133,6 +162,22 @@ bits):
        0015440 00 00 00 eb 05 b8 ff ff ff ff c9 c3
        0015454
 
+
+You can also attach a running process, but the feature is pretty experimental,
+and you might encounter strange/wrong behavior.  Here is an simple example:
+
+        $ sudo elfs -p `pidof xclock` /tmp/elf
+        $ sudo ls -l /tmp/elf/libs
+        total 0
+        -rwxrwxrwx 0 root root  9 1970-01-01 01:00 libc.so.6
+        -rwxrwxrwx 0 root root  9 1970-01-01 01:00 libm.so.6
+        -rwxrwxrwx 0 root root 11 1970-01-01 01:00 libX11.so.6
+        -rwxrwxrwx 0 root root 11 1970-01-01 01:00 libXaw.so.7
+        -rwxrwxrwx 0 root root 11 1970-01-01 01:00 libXft.so.2
+        -rwxrwxrwx 0 root root 15 1970-01-01 01:00 libxkbfile.so.1
+        -rwxrwxrwx 0 root root 11 1970-01-01 01:00 libXmu.so.6
+        -rwxrwxrwx 0 root root 15 1970-01-01 01:00 libXrender.so.1
+        -rwxrwxrwx 0 root root 10 1970-01-01 01:00 libXt.so.6
 
 
 For more informations, just type:
