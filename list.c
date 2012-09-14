@@ -147,26 +147,28 @@ list_get_nth(tlist *q,
 }
 
 /* if we don't want any duplicate, use this function (slow) */
-void
+int
 list_add_uniq(tlist *q,
               void *elem)
 {
         if (! elem)
-                return;
+                return -1;
 
         if (list_get(q, elem))
-                return;
+                return -1;
 
         tnode *node = malloc(sizeof *node);
         if (! node) {
                 perror("malloc");
-                return;
+                return -1;
         }
 
         node->elem = elem;
         node->next = NULL;
 
         q->size++;
+
+        return 0;
 }
 
 void

@@ -17,7 +17,7 @@ void list_set_cmp_func(tlist *list, tlist_cmp_func cmp_func);
 
 int list_get_size(tlist *q);
 void list_add(tlist *q, void *elem);
-void list_add_uniq(tlist *q, void *elem);
+int list_add_uniq(tlist *q, void *elem);
 void list_extract(tlist *q, void *elem);
 void *list_get(tlist *q, void *elem);
 void *list_get_nth(tlist *q, int n);
