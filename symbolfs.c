@@ -25,7 +25,7 @@ symbolfs_symtab_build(telf_ctx *ctx)
 
         rc = elf_namei(ctx, "/sections/symtab", &symtab_obj);
         if (ELF_SUCCESS != rc) {
-                LOG(LOG_ERR, 0, "can't find '/section/symtab': %s",
+                LOG(LOG_ERR, 0, "can't find '/sections/symtab': %s",
                     elf_status_to_str(rc));
                 ret = ELF_ENOENT;
                 goto end;
