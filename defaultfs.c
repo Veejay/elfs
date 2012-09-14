@@ -11,7 +11,7 @@ telf_ctx *ctx;
 
 /* file */
 
-telf_status
+static telf_status
 defaultfs_getattr(void *obj_hdl,
                   telf_stat *st)
 {
@@ -35,7 +35,7 @@ defaultfs_getattr(void *obj_hdl,
         return ret;
 }
 
-telf_status
+static telf_status
 defaultfs_open(char *path,
                telf_open_flags flags,
                void **objp)
@@ -90,7 +90,7 @@ defaultfs_open(char *path,
         return ret;
 }
 
-telf_status
+static telf_status
 defaultfs_release(void *obj_hdl)
 {
         telf_obj *obj = obj_hdl;
@@ -109,7 +109,7 @@ defaultfs_release(void *obj_hdl)
         return ELF_SUCCESS;
 }
 
-telf_status
+static telf_status
 defaultfs_read(void *obj_hdl,
                char *buf,
                size_t size,
@@ -164,7 +164,7 @@ defaultfs_read(void *obj_hdl,
         return ret;
 }
 
-telf_status
+static telf_status
 defaultfs_write(void *obj,
                 const char *buf,
                 size_t size,
@@ -178,7 +178,7 @@ defaultfs_write(void *obj,
 /* directory */
 
 
-telf_status
+static telf_status
 defaultfs_opendir(char *path,
                   void **objp)
 {
@@ -267,7 +267,7 @@ readdir_getdirent(void *hdl,
         return ELF_SUCCESS;
 }
 
-telf_status
+static telf_status
 defaultfs_readdir(void *obj_hdl,
                   void *data,
                   fuse_fill_dir_t fill)
@@ -308,12 +308,19 @@ defaultfs_readdir(void *obj_hdl,
         return ret;
 }
 
-telf_status
+static telf_status
 defaultfs_releasedir(void *obj)
 {
         return ELF_SUCCESS;
 }
 
+static telf_status
+defaultfs_readlink(void *obj,
+                   char **bufp,
+                   size_t *buf_lenp)
+{
+        return ELF_SUCCESS;
+}
 
 telf_fs_driver *
 defaultfs_driver_new(void)
@@ -336,6 +343,7 @@ defaultfs_driver_new(void)
         driver->opendir    = defaultfs_opendir;
         driver->readdir    = defaultfs_readdir;
         driver->releasedir = defaultfs_releasedir;
+        driver->readlink   = defaultfs_readlink;
 
         return driver;
 }

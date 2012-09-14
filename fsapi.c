@@ -23,6 +23,9 @@ elf_est_to_st(telf_stat *est,
         if (ELF_S_ISREG(est->st_mode))
                 st->st_mode |= S_IFREG;
 
+        if (ELF_S_ISLNK(est->st_mode))
+                st->st_mode |= S_IFLNK;
+
 #define X(f) if (ELF_S_##f & est->st_mode) st->st_mode |= S_##f
         X(IRWXU); // 00700 user
         X(IRUSR); // 00400 user has read permission
@@ -558,7 +561,31 @@ elf_fs_readlink(const char *path,
                 char *buf,
                 size_t bufsiz)
 {
-        return 0;
+        telf_fs_driver *driver;
+        telf_stat est;
+        telf_obj *obj = NULL;
+        telf_status rc;
+        int ret;
+
+        LOG(LOG_DEBUG, 0, "%s", path);
+
+        rc = elf_namei(ctx, path, &obj);
+        if (ELF_SUCCESS != rc) {
+                ret = -ENOENT;
+                goto end;
+        }
+
+        rc = obj->driver->readlink(obj, &buf, &bufsiz);
+        if (ELF_SUCCESS != rc) {
+                LOG(LOG_ERR, 0, "getattr failed: %s", elf_status_to_str(rc));
+                ret = rc;
+                goto end;
+        }
+
+        ret = 0;
+  end:
+        LOG(LOG_DEBUG, 0, "path=%s, ret=%d", path, ret);
+        return ret;
 }
 
 int
