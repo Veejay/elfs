@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <linux/limits.h>
+#include <sys/ptrace.h>
 
 #include <pthread.h>
 #include <elf.h>
@@ -48,10 +49,10 @@ typedef struct self_ctx {
         int loglevel;
         pthread_mutex_t mutex;
         struct stat st;
-        char path[PATH_MAX];
+        char binpath[PATH_MAX];
         unsigned char *addr;
+        pid_t pid;
 
-        unsigned char class;    /* ELFCLASS32 or ELFCLASS64 */
         Elf64_Ehdr *ehdr;       /* elf header */
         Elf64_Shdr *shdr;       /* sections header */
         Elf64_Phdr *phdr;       /* program header */

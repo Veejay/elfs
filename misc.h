@@ -5,6 +5,8 @@
 
 #define N_ELEMS(x) (sizeof x / sizeof x[0])
 
+int memread(pid_t pid, unsigned long addr, void *outp, size_t len);
+
 Elf64_Shdr *elf_getnsection(telf_ctx *ctx, int n);
 char *elf_getsectionname(telf_ctx *ctx, Elf64_Shdr *shdr);
 char *elf_getnsectionname(telf_ctx *ctx, int n);

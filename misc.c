@@ -1,5 +1,81 @@
+#include <errno.h>
+#include <stdlib.h>
+
 #include "misc.h"
 
+
+/* read data from location addr */
+int
+memread(pid_t pid,
+        unsigned long addr,
+        void *outp,
+        size_t len)
+{
+	int i, count;
+	long word;
+	unsigned long *ptr =  outp;
+        int ret;
+
+        count = i = 0;
+
+        while (count < len) {
+                /* Since -1 is a valid value for 'word', to detect
+                 * an error only have to rely on errno
+                 */
+                errno = 0;
+                word = ptrace(PTRACE_PEEKDATA, pid, addr + count);
+                if (errno) {
+                        ret = -1;
+                        goto end;
+                }
+
+                count += sizeof word;
+                ptr[i++] = word;
+        }
+
+        ret = 0;
+  end:
+        return ret;
+}
+
+int
+elf_getshstrtab(telf_ctx *ctx,
+                char **strtabp)
+{
+        Elf64_Shdr shdr;
+        int rc;
+        size_t to_read;
+        unsigned long addr;
+        char *strtab = NULL;
+
+        to_read = sizeof shdr;
+        addr = (unsigned long) (uintptr_t) ctx->addr + ctx->ehdr->e_shstrndx;
+
+        rc = memread(ctx->pid, addr, (void *) &shdr, to_read);
+        if (-1 == rc)
+                goto err;
+
+        to_read = shdr.sh_size;
+        addr = (unsigned long) (uintptr_t) ctx->addr + shdr.sh_offset;
+
+        strtab = malloc(to_read);
+        if (! strtab)
+                goto err;
+
+        rc = memread(ctx->pid, addr, (void *) &strtab, to_read);
+        if (-1 == rc)
+                goto err;
+
+        if (strtabp)
+                *strtabp = strtab;
+
+        return 0;
+  err:
+        if (strtab)
+                free(strtab);
+
+        return -1;
+}
 
 
 Elf64_Shdr *
