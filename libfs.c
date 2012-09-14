@@ -7,6 +7,14 @@
 #include "libfs.h"
 
 
+static telf_status
+libfs_open(char *path,
+           telf_open_flags flags,
+           void **objp)
+{
+        return ELF_FAILURE;
+}
+
 
 static telf_status
 libfs_getattr(void *obj_hdl,
@@ -23,7 +31,7 @@ libfs_getattr(void *obj_hdl,
         memset(&st, 0, sizeof st);
         st.st_mode |= ELF_S_IFREG;
         st.st_mode |= ELF_S_IRWXU|ELF_S_IRWXG|ELF_S_IRWXO;
-        st.st_size = strlen(obj->name);
+        st.st_size = 0;
 
         ret = ELF_SUCCESS;
   end:
@@ -39,6 +47,7 @@ static void
 libfs_override_driver(telf_fs_driver *driver)
 {
         driver->getattr  = libfs_getattr;
+        driver->open     = libfs_open;
 }
 
 telf_status
