@@ -233,6 +233,7 @@ rootfs_build(telf_ctx *ctx)
         telf_status ret;
         telf_obj *root_obj = NULL;
         telf_obj *sections_obj = NULL;
+        telf_obj *libs_obj = NULL;
         telf_obj *entry = NULL;
         int i;
 
@@ -254,7 +255,17 @@ rootfs_build(telf_ctx *ctx)
                 goto err;
         }
 
+        libs_obj = elf_obj_new(ctx, "libs", root_obj,
+                               ELF_LIBS,
+                               ELF_S_IFDIR);
+        if (! libs_obj) {
+                LOG(LOG_ERR, 0, "libs obj creation failed");
+                ret = ELF_FAILURE;
+                goto err;
+        }
+
         list_add(root_obj->entries, sections_obj);
+        list_add(root_obj->entries, libs_obj);
 
         /* now add the pseudo files */
         for (i = 0; i < N_ELEMS(rootfs_fcb); i++) {

@@ -438,7 +438,11 @@ elf_ctx_new(const char * const path,
                 goto err;
         }
 
-        LOG(LOG_DEBUG, 0, "ctx successfully created for file %s", path);
+        rc = libfs_build(ctx);
+        if (ELF_SUCCESS != rc) {
+                LOG(LOG_ERR, 0, "libfs build failed");
+                goto err;
+        }
 
         return ctx;
 
