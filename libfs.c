@@ -100,7 +100,7 @@ libfs_build(telf_ctx *ctx)
                 if (DT_NEEDED != dyn->d_tag)
                         continue;
 
-                LOG(LOG_ERR, 0, " -> %s",
+                LOG(LOG_DEBUG, 0, " -> %s",
                     ctx->dstrtab + dyn->d_un.d_val);
 
                 libname = ctx->dstrtab + dyn->d_un.d_val;

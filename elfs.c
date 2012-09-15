@@ -521,7 +521,6 @@ main(int argc,
                         loglevel = rc;
         }
 
-        elf_file = argv[1];
         if (0 == strcmp("-p", argv[1])) {
 
                 if (! argc)  {
