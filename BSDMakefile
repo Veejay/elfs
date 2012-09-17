@@ -1,0 +1,24 @@
+PROG=elfs
+
+SRCS= defaultfs.c \
+      elfs.c \
+      fsapi.c \
+      libfs.c \
+      list.c \
+      misc.c \
+      programfs.c \
+      rootfs.c \
+      sectionfs.c \
+      symbolfs.c \
+      symentryfs.c \
+      utils.c
+
+MAN1=${PROG}.1
+
+INCDIR=	/usr/local/include
+
+FUSEFLAGS!=pkgconf --libs fuse
+CFLAGS+= -Wall -I${.CURDIR} -I${INCDIR} -D_FILE_OFFSET_BITS=64 -g
+LDFLAGS+= -L/usr/local/lib -ludis86 ${FUSEFLAGS}
+
+.include <bsd.prog.mk>

@@ -10,7 +10,8 @@ the structure of an ELF object.
 
         $ git clone git://github.com/pozdnychev/elfs
         $ cd elfs
-        $ make
+        $ make or make -f Makefile on Linux platform
+	$ make -f BSDMakefile on BSD platform
 
 And now, with root privileges:
 

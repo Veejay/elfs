@@ -3,6 +3,10 @@
 
 #include "misc.h"
 
+#ifdef __FreeBSD__
+#define PTRACE_PEEKDATA PT_READ_D
+#endif
+
 
 /* read data from location addr */
 int
@@ -23,7 +27,7 @@ memread(pid_t pid,
                  * an error only have to rely on errno
                  */
                 errno = 0;
-                word = ptrace(PTRACE_PEEKDATA, pid, addr + count);
+                word = ptrace(PTRACE_PEEKDATA, pid, addr + count, NULL);
                 if (errno) {
                         ret = -1;
                         goto end;

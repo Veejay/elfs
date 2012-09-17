@@ -24,6 +24,13 @@
 #include "fsapi.h"
 #include "libfs.h"
 
+#ifdef __FreeBSD__
+#define PTRACE_DETACH PT_DETACH
+#define PTRACE_ATTACH PT_ATTACH
+#include <sys/wait.h>
+#endif
+
+
 telf_ctx *ctx = NULL;
 
 #define MAP(v) X(v, #v)

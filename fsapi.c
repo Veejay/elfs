@@ -1,6 +1,7 @@
 #include <errno.h>
 #include <string.h>
 #include <assert.h>
+#include <stdlib.h>
 
 #include "elfs.h"
 #include "fsapi.h"
@@ -81,7 +82,7 @@ elf_namei(telf_ctx *ctx,
                 while (p && *p && '/' != *p)
                         p++;
 
-                current = strndupa(start, (size_t) (p - start));
+                current = strndup(start, (size_t) (p - start));
                 if (! current) {
                         LOG(LOG_ERR, 0, "strndupa: %s", strerror(errno));
                         ret = ELF_ENOMEM;
@@ -102,6 +103,8 @@ elf_namei(telf_ctx *ctx,
                         ret = ELF_ENOENT;
                         goto end;
                 }
+
+                free(current);
 
                 while ('/' == *p)
                         p++;
@@ -419,7 +422,7 @@ elf_fs_open(const char *path,
         rc = elf_namei(ctx, path, &obj);
         if (ELF_SUCCESS != rc) {
                 LOG(LOG_ERR, 0, "namei(%s) failed: %d", path, rc);
-                ret = -ENONET;
+                ret = -ENOENT;
                 goto end;
         }
 

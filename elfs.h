@@ -4,7 +4,11 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#ifdef __FreeBSD__
+#include <limits.h>
+#else
 #include <linux/limits.h>
+#endif
 #include <sys/ptrace.h>
 
 #include <pthread.h>
