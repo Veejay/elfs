@@ -30,6 +30,11 @@ typedef telf_status (* tobj_getsize_func)(void *, size_t *);
 typedef telf_status (* tobj_setcontent_func)(void *, char **, size_t *);
 typedef void (* tobj_freecontent_func)(void *);
 
+typedef struct {
+        pid_t pid;
+        char *mountpoint;
+        char *binfile;
+} telf_options;
 
 typedef struct self_obj {
         telf_fs_driver *driver;  /* set of fs callbacks */

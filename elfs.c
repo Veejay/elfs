@@ -87,6 +87,14 @@ struct fuse_operations elf_fs_ops = {
 };
 
 
+static void
+elf_options_init(telf_options *options)
+{
+        options->pid = 0;
+        options->mountpoint = NULL;
+        options->binfile = NULL;
+}
+
 static char *
 elf_type_to_str(telf_type type)
 {
@@ -343,15 +351,14 @@ elf_mmap_internal(telf_ctx *ctx)
 }
 
 static telf_ctx *
-elf_ctx_new(const char * const path,
-            int pid,
-            const char * const mountpoint)
+elf_ctx_new(telf_options *opt)
 {
         telf_ctx *ctx = NULL;
         telf_status rc;
         int iret;
 
-        LOG(LOG_DEBUG, 0, "mount file '%s' on '%s'", path, mountpoint);
+        LOG(LOG_DEBUG, 0, "mount file '%s' on '%s'",
+            opt->binfile, opt->mountpoint);
 
         ctx = malloc(sizeof *ctx);
         if (! ctx) {
@@ -361,17 +368,18 @@ elf_ctx_new(const char * const path,
 
         memset(ctx, 0, sizeof *ctx);
 
-        iret = mkdir(mountpoint, 0755);
+        iret = mkdir(opt->mountpoint, 0755);
         if (-1 == iret && EEXIST != errno) {
-                LOG(LOG_ERR, 0, "mkdir(%s): %s", mountpoint, strerror(errno));
+                LOG(LOG_ERR, 0, "mkdir(%s): %s",
+                    opt->mountpoint, strerror(errno));
                 goto err;
         }
 
-        if (-1 != pid) {
+        if (ctx->pid) {
                 char pidpath[PATH_MAX];
                 ssize_t len;
 
-                sprintf(pidpath, "/proc/%d/exe", pid);
+                sprintf(pidpath, "/proc/%d/exe", opt->pid);
 
                 len = readlink(pidpath, ctx->binpath, sizeof ctx->binpath -1);
                 if (-1 == len) {
@@ -381,7 +389,7 @@ elf_ctx_new(const char * const path,
 
                 ctx->binpath[len] = 0;
 
-                ctx->pid = pid;
+                ctx->pid = opt->pid;
 
                 iret = ptrace(PTRACE_ATTACH, ctx->pid, NULL, NULL);
                 if (-1 == iret) {
@@ -393,16 +401,16 @@ elf_ctx_new(const char * const path,
                 waitpid(ctx->pid, NULL, WUNTRACED);
 
         } else {
-                if (NULL == realpath(path, ctx->binpath)) {
+                if (NULL == realpath(opt->binfile, ctx->binpath)) {
                         LOG(LOG_ERR, 0, "realpath(%s): %s",
-                            path, strerror(errno));
+                            opt->binfile, strerror(errno));
                         goto err;
                 }
         }
 
         iret = stat(ctx->binpath, &ctx->st);
         if (-1 == iret) {
-                LOG(LOG_ERR, 0, "stat(%s): %s", path, strerror(errno));
+                LOG(LOG_ERR, 0, "stat(%s): %s", opt->binfile, strerror(errno));
                 goto err;
         }
 
@@ -500,23 +508,82 @@ prioritytoa(int priority)
         return "unknown priority";
 }
 
+static int
+elf_parse_commandline(int argc,
+                      char **argv,
+                      telf_options *options,
+                      int *offsetp)
+{
+        int ret;
+        int offset;
+
+        if (argc < 3) {
+                ret = -1;
+                goto end;
+        }
+
+        /* the last argument is the mountpoint*/
+        offset = 1;
+
+        options->mountpoint = strdup(argv[argc - 1]);
+        if (! options->mountpoint) {
+                perror("strdup");
+                ret = -1;
+                goto end;
+        }
+
+        if (0 == strcmp(argv[argc - 2], "-d"))
+                offset++;
+
+        if (0 == strcmp("-p", argv[1])) {
+                /* we need an extra parameter, the pid */
+                if (argc < 4) {
+                        ret = -1;
+                        goto end;
+                }
+
+                options->pid = strtoul(argv[2], NULL, 0);
+        } else {
+                options->binfile = strdup(argv[1]);
+                if (! options->binfile) {
+                        perror("strdup");
+                        ret = -1;
+                        goto end;
+                }
+        }
+
+        ret = 0;
+  end:
+        if (offsetp)
+                *offsetp = offset;
+
+        return ret;
+}
+
 int
 main(int argc,
      char **argv)
 {
         int ret;
+        int rc;
         const char * const progname = argv[0];
         char *lvl = NULL;
-        long pid = -1;
-        char *elf_file = NULL;
-        char *mountpoint = NULL;
-
-        if (argc < 3) {
-                usage(progname);
-                exit(EXIT_FAILURE);
-        }
+        telf_options options;
+        int offset = 0;
 
         openlog(basename((char *) progname), LOG_CONS | LOG_NOWAIT | LOG_PID, LOG_USER);
+
+        elf_options_init(&options);
+
+        rc = elf_parse_commandline(argc, argv, &options, &offset);
+        if (-1 == rc) {
+                usage(progname);
+                ret = EXIT_FAILURE;
+                goto end;
+        }
+
+        argc -= offset;
+        argv += offset;
 
         // default value
         loglevel = LOG_ERR;
@@ -528,45 +595,21 @@ main(int argc,
                         loglevel = rc;
         }
 
-        if (0 == strcmp("-p", argv[1])) {
-
-                if (! argc)  {
-                        usage(progname);
-                        ret = EXIT_FAILURE;
-                        goto end;
-                }
-
-                pid = strtoul(argv[2], NULL, 0);
-
-                argc--;
-                argv++;
-        } else {
-                elf_file = argv[1];
-        }
-
-        mountpoint = argv[argc - 1];
-
-        LOG(LOG_DEBUG, 0, "loglevel=%s", prioritytoa(loglevel));
-        LOG(LOG_DEBUG, 0, "mountpoint=%s", mountpoint);
-
         signal(SIGHUP, SIG_IGN);
         signal(SIGURG, SIG_IGN);
 
-        ctx = elf_ctx_new(elf_file, pid, mountpoint);
+        ctx = elf_ctx_new(&options);
         if (! ctx) {
                 LOG(LOG_ERR, 0, "ctx creation failed");
                 exit(EXIT_FAILURE);
         }
 
-        argc--;
-        argv++;
-
         struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
         ret = fuse_main(args.argc, args.argv, &elf_fs_ops, NULL);
 
+  end:
         closelog();
 
-  end:
         if (ctx)
                 elf_ctx_free(ctx);
 
