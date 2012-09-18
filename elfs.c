@@ -372,7 +372,7 @@ elf_ctx_new(telf_options *opt)
                 goto err;
         }
 
-        if (ctx->pid) {
+        if (opt->pid) {
                 char pidpath[PATH_MAX];
                 ssize_t len;
 
@@ -511,15 +511,12 @@ elf_parse_commandline(int argc,
                       int *offsetp)
 {
         int ret;
-        int offset;
+        int offset = 1;
 
         if (argc < 3) {
                 ret = -1;
                 goto end;
         }
-
-        /* the last argument is the mountpoint*/
-        offset = 1;
 
         options->mountpoint = strdup(argv[argc - 1]);
         if (! options->mountpoint) {
@@ -528,9 +525,6 @@ elf_parse_commandline(int argc,
                 goto end;
         }
 
-        if (0 == strcmp(argv[argc - 2], "-d"))
-                offset++;
-
         if (0 == strcmp("-p", argv[1])) {
                 /* we need an extra parameter, the pid */
                 if (argc < 4) {
@@ -538,6 +532,7 @@ elf_parse_commandline(int argc,
                         goto end;
                 }
 
+                offset++;
                 options->pid = strtoul(argv[2], NULL, 0);
         } else {
                 options->binfile = strdup(argv[1]);
