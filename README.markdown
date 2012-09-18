@@ -1,7 +1,7 @@
-A FUSE filesystem on top of ELF file!
+A FUSE filesystem on top of ELF files!
 
 
-This tool is mostly for educationnal purposes, as it permits to easily visualize
+This tool is mostly for educational purposes, it allows to easily visualize
 the structure of an ELF object.
 
 
