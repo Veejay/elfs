@@ -91,7 +91,7 @@ rootfs_gen_info(Elf64_Ehdr *ehdr,
         if (bufp) {
                 buf = malloc(buf_len + 1);
                 if (! buf) {
-                        LOG(LOG_ERR, 0, "malloc: %s", strerror(errno));
+                        ERR("malloc: %s", strerror(errno));
                         ret = ELF_ENOMEM;
                         goto end;
                 }
@@ -123,7 +123,7 @@ rootfs_info_getsize(void *obj_hdl,
 
         rc = rootfs_gen_info(obj->ctx->ehdr, NULL, sizep);
         if (ELF_SUCCESS != rc) {
-                LOG(LOG_ERR, 0, "Can't generate header info");
+                ERR("Can't generate header info");
                 ret = rc;
                 goto end;
         }
@@ -144,14 +144,14 @@ rootfs_info_setcontent(void *obj_hdl,
 
         rc = rootfs_gen_info(obj->ctx->ehdr, bufp, buf_lenp);
         if (ELF_SUCCESS != rc) {
-                LOG(LOG_ERR, 0, "Can't generate header info");
+                ERR("Can't generate header info");
                 ret = rc;
                 goto end;
         }
 
         ret = ELF_SUCCESS;
   end:
-        LOG(LOG_DEBUG, 0, "ret=%s (%d)", elf_status_to_str(ret), ret);
+        DEBUG("ret=%s (%d)", elf_status_to_str(ret), ret);
         return ret;
 }
 
@@ -184,7 +184,7 @@ rootfs_getattr(void *obj_hdl,
 
         elf_obj_lock(obj);
 
-        LOG(LOG_DEBUG, 0, "name:%s data=%p", obj->name, obj->data);
+        DEBUG("name:%s data=%p", obj->name, obj->data);
 
         memset(&st, 0, sizeof st);
         st.st_mode |= ELF_S_IFREG;
@@ -195,8 +195,7 @@ rootfs_getattr(void *obj_hdl,
                 if (0 == strcmp(obj->name, fcb->str)) {
                         rc = fcb->getsize_func(obj, &st.st_size);
                         if (ELF_SUCCESS != rc) {
-                                LOG(LOG_ERR, 0, "can't get size of '%s'",
-                                    obj->name);
+                                ERR("can't get size of '%s'", obj->name);
                                 ret = rc;
                                 goto end;
                         }
@@ -212,7 +211,7 @@ rootfs_getattr(void *obj_hdl,
         if (stp)
                 *stp = st;
 
-        LOG(LOG_DEBUG, 0, "ret=%s (%d)", elf_status_to_str(ret), ret);
+        DEBUG("ret=%s (%d)", elf_status_to_str(ret), ret);
         return ret;
 }
 
@@ -241,7 +240,7 @@ rootfs_build(telf_ctx *ctx)
                                ELF_ROOTDIR,
                                ELF_S_IFDIR);
         if (! root_obj) {
-                LOG(LOG_ERR, 0, "root obj creation failed");
+                ERR("root obj creation failed");
                 ret = ELF_FAILURE;
                 goto err;
         }
@@ -250,7 +249,7 @@ rootfs_build(telf_ctx *ctx)
                                    ELF_SECTION,
                                    ELF_S_IFDIR);
         if (! sections_obj) {
-                LOG(LOG_ERR, 0, "section obj creation failed");
+                ERR("section obj creation failed");
                 ret = ELF_FAILURE;
                 goto err;
         }
@@ -259,7 +258,7 @@ rootfs_build(telf_ctx *ctx)
                                ELF_LIBS,
                                ELF_S_IFDIR);
         if (! libs_obj) {
-                LOG(LOG_ERR, 0, "libs obj creation failed");
+                ERR("libs obj creation failed");
                 ret = ELF_FAILURE;
                 goto err;
         }
@@ -275,8 +274,7 @@ rootfs_build(telf_ctx *ctx)
                                     ELF_ROOTDIR_ENTRY,
                                     ELF_S_IFREG);
                 if (! entry) {
-                        LOG(LOG_ERR, 0, "can't build entry '%s'",
-                            fcb->str);
+                        ERR("can't build entry '%s'", fcb->str);
                         continue;
                 }
 

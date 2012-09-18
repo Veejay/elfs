@@ -48,7 +48,7 @@ symentryfs_asmcode_getsize(void *obj_hdl,
                                    NULL,
                                    &size);
                 if (ELF_SUCCESS != rc) {
-                        LOG(LOG_ERR, 0, "can't extract asm code from binary");
+                        ERR("can't extract asm code from binary");
                         ret = rc;
                         goto end;
                 }
@@ -86,7 +86,7 @@ symentryfs_asmcode_setcontent(void *obj_hdl,
                                    &buf,
                                    &buf_len);
                 if (ELF_SUCCESS != rc) {
-                        LOG(LOG_ERR, 0, "can't extract asm code from binary");
+                        ERR("can't extract asm code from binary");
                         ret = rc;
                         goto end;
                 }
@@ -144,7 +144,7 @@ symentryfs_bincode_setcontent(void *obj_hdl,
                 offset = sym->st_value - obj->ctx->base_vaddr;
                 buf = malloc(buf_len);
                 if (! buf) {
-                        LOG(LOG_ERR, 0, "malloc: %s", strerror(errno));
+                        ERR("malloc: %s", strerror(errno));
                         ret = ELF_ENOMEM;
                         goto end;
                 }
@@ -203,7 +203,7 @@ symentryfs_gen_info(telf_obj *obj,
         if (bufp) {
                 buf = malloc(buf_len + 1);
                 if (! buf) {
-                        LOG(LOG_ERR, 0, "malloc: %s", strerror(errno));
+                        ERR("malloc: %s", strerror(errno));
                         ret = ELF_ENOMEM;
                         goto end;
                 }
@@ -236,7 +236,7 @@ symentryfs_info_getsize(void *obj_hdl,
 
         rc = symentryfs_gen_info(obj, sym, NULL, sizep);
         if (ELF_SUCCESS != rc) {
-                LOG(LOG_ERR, 0, "Can't generate info for entry");
+                ERR("Can't generate info for entry");
                 ret = rc;
                 goto end;
         }
@@ -258,7 +258,7 @@ symentryfs_info_setcontent(void *obj_hdl,
 
         rc = symentryfs_gen_info(obj, sym, bufp, buf_lenp);
         if (ELF_SUCCESS != rc) {
-                LOG(LOG_ERR, 0, "Can't generate info for entry");
+                ERR("Can't generate info for entry");
                 ret = rc;
                 goto end;
         }
@@ -266,7 +266,7 @@ symentryfs_info_setcontent(void *obj_hdl,
         ret = ELF_SUCCESS;
   end:
 
-        LOG(LOG_DEBUG, 0, "ret=%s (%d)", elf_status_to_str(ret), ret);
+        DEBUG("ret=%s (%d)", elf_status_to_str(ret), ret);
         return ret;
 }
 
@@ -313,7 +313,7 @@ symentryfs_getattr(void *obj_hdl,
 
         elf_obj_lock(obj);
 
-        LOG(LOG_DEBUG, 0, "name:%s data=%p", obj->name, obj->data);
+        DEBUG("name:%s data=%p", obj->name, obj->data);
 
         memset(&st, 0, sizeof st);
         st.st_mode |= ELF_S_IFREG;
@@ -324,8 +324,7 @@ symentryfs_getattr(void *obj_hdl,
                 if (0 == strcmp(obj->name, fcb->str)) {
                         rc = fcb->getsize_func(obj, &st.st_size);
                         if (ELF_SUCCESS != rc) {
-                                LOG(LOG_ERR, 0, "can't get size of '%s'",
-                                    obj->name);
+                                ERR("can't get size of '%s'", obj->name);
                                 ret = rc;
                                 goto end;
                         }
@@ -341,7 +340,7 @@ symentryfs_getattr(void *obj_hdl,
         if (stp)
                 *stp = st;
 
-        LOG(LOG_DEBUG, 0, "ret=%s (%d)", elf_status_to_str(ret), ret);
+        DEBUG("ret=%s (%d)", elf_status_to_str(ret), ret);
         return ret;
 }
 
@@ -368,8 +367,7 @@ symentryfs_build(telf_ctx *ctx,
                                     ELF_SYMBOL_ENTRY,
                                     ELF_S_IFREG);
                 if (! entry) {
-                        LOG(LOG_ERR, 0, "can't build entry '%s'",
-                            fcb->str);
+                        ERR("can't build entry '%s'", fcb->str);
                         continue;
                 }
 

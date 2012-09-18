@@ -84,14 +84,14 @@ elf_namei(telf_ctx *ctx,
 
                 current = strndup(start, (size_t) (p - start));
                 if (! current) {
-                        LOG(LOG_ERR, 0, "strndupa: %s", strerror(errno));
+                        ERR("strndupa: %s", strerror(errno));
                         ret = ELF_ENOMEM;
                         goto end;
                 }
 
 
                 if (! parent->entries) {
-                        LOG(LOG_ERR, 0, "no entries for parent '%s'",
+                        ERR("no entries for parent '%s'",
                             parent->name);
                         ret = ELF_ENOENT;
                         goto end;
@@ -99,7 +99,7 @@ elf_namei(telf_ctx *ctx,
 
                 obj = list_get(parent->entries, current);
                 if (! obj) {
-                        LOG(LOG_ERR, 0, "can't get entry '%s'", current);
+                        ERR("can't get entry '%s'", current);
                         ret = ELF_ENOENT;
                         goto end;
                 }
@@ -130,7 +130,7 @@ elf_fs_getxattr(const char *path,
                 char *value,
                 size_t size)
 {
-        LOG(LOG_DEBUG, 0, "path=%s, value=%s", path, value);
+        DEBUG("path=%s, value=%s", path, value);
         return 0;
 }
 
@@ -139,7 +139,7 @@ elf_fs_listxattr(const char *path,
                  char *list,
                  size_t size)
 {
-        LOG(LOG_DEBUG, 0, "path=%s, list=%s, size=%zu", path, list, size);
+        DEBUG("path=%s, list=%s, size=%zu", path, list, size);
         return 0;
 }
 
@@ -147,7 +147,7 @@ int
 elf_fs_removexattr(const char *path,
                    const char *name)
 {
-        LOG(LOG_DEBUG, 0, "path=%s, name=%s", path, name);
+        DEBUG("path=%s, name=%s", path, name);
         return 0;
 }
 
@@ -157,7 +157,7 @@ elf_fs_flush(const char *path,
 {
         (void) info;
 
-        LOG(LOG_DEBUG, 0, "%s", path);
+        DEBUG("%s", path);
         return 0;
 }
 
@@ -167,7 +167,7 @@ elf_fs_truncate(const char *path,
 {
         (void) offset;
 
-        LOG(LOG_DEBUG, 0, "%s", path);
+        DEBUG("%s", path);
         return 0;
 }
 
@@ -177,7 +177,7 @@ elf_fs_utime(const char *path,
 {
         (void) times;
 
-        LOG(LOG_DEBUG, 0, "%s", path);
+        DEBUG("%s", path);
         return 0;
 }
 
@@ -189,12 +189,12 @@ elf_fs_releasedir(const char *path,
         int ret;
         telf_status rc;
 
-        LOG(LOG_DEBUG, 0, "%s", path);
+        DEBUG("%s", path);
 
         if (! obj) {
                 rc = elf_namei(ctx, path, &obj);
                 if (ELF_SUCCESS != rc) {
-                        LOG(LOG_ERR, 0, "can't find object with key '%s': %s",
+                        ERR("can't find object with key '%s': %s",
                             path, elf_status_to_str(rc));
                         ret = -1;
                         goto end;
@@ -203,7 +203,7 @@ elf_fs_releasedir(const char *path,
 
         rc = obj->driver->releasedir(obj);
         if (ELF_SUCCESS != rc) {
-                LOG(LOG_ERR, 0, "releasedir failed: %s", elf_status_to_str(rc));
+                ERR("releasedir failed: %s", elf_status_to_str(rc));
                 ret = rc;
                 goto end;
         }
@@ -221,7 +221,7 @@ elf_fs_fsyncdir(const char *path,
         (void) datasync;
         (void) info;
 
-        LOG(LOG_DEBUG, 0, "%s", path);
+        DEBUG("%s", path);
         return 0;
 }
 
@@ -234,7 +234,7 @@ elf_fs_init(struct fuse_conn_info *conn)
 void
 elf_fs_destroy(void *arg)
 {
-        LOG(LOG_DEBUG, 0, "%p", arg);
+        DEBUG("%p", arg);
 }
 
 int
@@ -242,7 +242,7 @@ elf_fs_access(const char *path, int perm)
 {
         (void) perm;
 
-        LOG(LOG_DEBUG, 0, "%s", path);
+        DEBUG("%s", path);
         return 0;
 }
 
@@ -254,7 +254,7 @@ elf_fs_ftruncate(const char *path,
         (void) offset;
         (void) info;
 
-        LOG(LOG_DEBUG, 0, "%s", path);
+        DEBUG("%s", path);
         return 0;
 }
 
@@ -268,7 +268,7 @@ elf_fs_lock(const char *path,
         (void) cmd;
         (void) flock;
 
-        LOG(LOG_DEBUG, 0, "%s", path);
+        DEBUG("%s", path);
         return 0;
 }
 
@@ -279,7 +279,7 @@ elf_fs_utimens(const char *path,
         (void) path;
         (void) tv;
 
-        LOG(LOG_DEBUG, 0, "%s", path);
+        DEBUG("%s", path);
         return 0;
 }
 
@@ -291,7 +291,7 @@ elf_fs_bmap(const char *path,
         (void) blocksize;
         (void) idx;
 
-        LOG(LOG_DEBUG, 0, "%s", path);
+        DEBUG("%s", path);
         return 0;
 }
 
@@ -304,7 +304,7 @@ elf_fs_ioctl(const char *path,
              unsigned int flags,
              void *data)
 {
-        LOG(LOG_DEBUG, 0, "%s", path);
+        DEBUG("%s", path);
         return 0;
 }
 
@@ -318,7 +318,7 @@ elf_fs_poll(const char *path,
         (void) ph;
         (void) reventsp;
 
-        LOG(LOG_DEBUG, 0, "%s", path);
+        DEBUG("%s", path);
         return 0;
 }
 #endif
@@ -333,7 +333,7 @@ elf_fs_getattr(const char *path,
         telf_status rc;
         int ret;
 
-        LOG(LOG_DEBUG, 0, "%s", path);
+        DEBUG("%s", path);
 
         rc = elf_namei(ctx, path, &obj);
         if (ELF_SUCCESS != rc) {
@@ -343,7 +343,7 @@ elf_fs_getattr(const char *path,
 
         rc = obj->driver->getattr(obj, &est);
         if (ELF_SUCCESS != rc) {
-                LOG(LOG_ERR, 0, "getattr failed: %s", elf_status_to_str(rc));
+                ERR("getattr failed: %s", elf_status_to_str(rc));
                 ret = rc;
                 goto end;
         }
@@ -352,7 +352,7 @@ elf_fs_getattr(const char *path,
 
         ret = 0;
   end:
-        LOG(LOG_DEBUG, 0, "path=%s, ret=%d", path, ret);
+        DEBUG("path=%s, ret=%d", path, ret);
         return ret;
 }
 
@@ -361,7 +361,7 @@ elf_fs_chmod(const char *path,
              mode_t mode)
 {
         (void) mode;
-        LOG(LOG_DEBUG, 0, "%s", path);
+        DEBUG("%s", path);
         return 0;
 }
 
@@ -370,7 +370,7 @@ elf_fs_chown(const char *path,
              uid_t uid,
              gid_t gid)
 {
-        LOG(LOG_DEBUG, 0, "%s: uid=%u, gid=%u", path, uid, gid);
+        DEBUG("%s: uid=%u, gid=%u", path, uid, gid);
         return 0;
 }
 
@@ -382,7 +382,7 @@ elf_fs_create(const char *path,
         (void) mode;
         (void) info;
 
-        LOG(LOG_DEBUG, 0, "%s", path);
+        DEBUG("%s", path);
         return 0;
 }
 
@@ -417,11 +417,11 @@ elf_fs_open(const char *path,
         telf_status rc;
         int ret;
 
-        LOG(LOG_DEBUG, 0, "path=%s", path);
+        DEBUG("path=%s", path);
 
         rc = elf_namei(ctx, path, &obj);
         if (ELF_SUCCESS != rc) {
-                LOG(LOG_ERR, 0, "namei(%s) failed: %d", path, rc);
+                ERR("namei(%s) failed: %d", path, rc);
                 ret = -ENOENT;
                 goto end;
         }
@@ -437,7 +437,7 @@ elf_fs_open(const char *path,
          */
         rc = obj->driver->open((char *) path, 0u /* XXX */, (void **) &obj);
         if (ELF_SUCCESS != rc) {
-                LOG(LOG_ERR, 0, "open failed: %s", elf_status_to_str(rc));
+                ERR("open failed: %s", elf_status_to_str(rc));
                 ret = -EIO;
                 goto end;
         }
@@ -461,7 +461,7 @@ elf_fs_read(const char *path,
         telf_status rc;
         ssize_t cc;
 
-        LOG(LOG_DEBUG, 0, "path=%s", path);
+        DEBUG("path=%s", path);
 
         if (! obj) {
                 ret = -ENOENT;
@@ -470,7 +470,7 @@ elf_fs_read(const char *path,
 
         rc = obj->driver->read(obj, buf, size, offset, &cc);
         if (rc != ELF_SUCCESS) {
-                LOG(LOG_ERR, 0, "%s: can't read %zu bytes @offset: %zd: %s",
+                ERR("%s: can't read %zu bytes @offset: %zd: %s",
                     path, size, offset, elf_status_to_str(rc));
                 ret = -EIO;
                 goto end;
@@ -493,12 +493,12 @@ elf_fs_write(const char *path,
         telf_status rc;
         ssize_t cc;
 
-        LOG(LOG_DEBUG, 0, "path=%s", path);
+        DEBUG("path=%s", path);
 
         if (! obj) {
                 rc = elf_namei(ctx, path, &obj);
                 if (ELF_SUCCESS != rc) {
-                        LOG(LOG_ERR, 0, "can't find object with key '%s': %s",
+                        ERR("can't find object with key '%s': %s",
                             path, elf_status_to_str(rc));
                         ret = -ENOENT;
                         goto end;
@@ -507,7 +507,7 @@ elf_fs_write(const char *path,
 
         rc = obj->driver->write(obj, buf, size, offset, &cc);
         if (ELF_SUCCESS != rc) {
-                LOG(LOG_ERR, 0, "%s: can't write %zu bytes @offset: %zd: %s",
+                ERR("%s: can't write %zu bytes @offset: %zd: %s",
                     path, size, offset, elf_status_to_str(rc));
                 ret = -EIO;
                 goto end;
@@ -536,11 +536,11 @@ elf_fs_readdir(const char *path,
         telf_status rc;
         telf_obj *obj;
 
-        LOG(LOG_DEBUG, 0, "path=%s", path);
+        DEBUG("path=%s", path);
 
         rc = elf_namei(ctx, path, &obj);
         if (ELF_SUCCESS != rc) {
-                LOG(LOG_ERR, 0, "can't find object with key '%s': %s",
+                ERR("can't find object with key '%s': %s",
                     path, elf_status_to_str(rc));
                 ret = -ENOENT;
                 goto end;
@@ -548,7 +548,7 @@ elf_fs_readdir(const char *path,
 
         rc = obj->driver->readdir(obj, data, fill);
         if (ELF_SUCCESS != rc) {
-                LOG(LOG_ERR, 0, "readdir failed: %s", elf_status_to_str(rc));
+                ERR("readdir failed: %s", elf_status_to_str(rc));
                 ret = -EIO;
                 goto end;
         }
@@ -570,7 +570,7 @@ elf_fs_readlink(const char *path,
         telf_status rc;
         int ret;
 
-        LOG(LOG_DEBUG, 0, "%s", path);
+        DEBUG("%s", path);
 
         rc = elf_namei(ctx, path, &obj);
         if (ELF_SUCCESS != rc) {
@@ -580,14 +580,14 @@ elf_fs_readlink(const char *path,
 
         rc = obj->driver->readlink(obj, &buf, &bufsiz);
         if (ELF_SUCCESS != rc) {
-                LOG(LOG_ERR, 0, "getattr failed: %s", elf_status_to_str(rc));
+                ERR("getattr failed: %s", elf_status_to_str(rc));
                 ret = rc;
                 goto end;
         }
 
         ret = 0;
   end:
-        LOG(LOG_DEBUG, 0, "path=%s, ret=%d", path, ret);
+        DEBUG("path=%s, ret=%d", path, ret);
         return ret;
 }
 
@@ -602,7 +602,7 @@ elf_fs_release(const char *path,
         if (! obj) {
                 rc = elf_namei(ctx, path, &obj);
                 if (ELF_SUCCESS != rc) {
-                        LOG(LOG_ERR, 0, "can't find object with key '%s': %s",
+                        ERR("can't find object with key '%s': %s",
                             path, elf_status_to_str(rc));
                         ret = -ENOENT;
                         goto end;
@@ -611,7 +611,7 @@ elf_fs_release(const char *path,
 
         rc = obj->driver->release(obj);
         if (ELF_SUCCESS != rc) {
-                LOG(LOG_ERR, 0, "release failed: %s", elf_status_to_str(rc));
+                ERR("release failed: %s", elf_status_to_str(rc));
                 ret = -EIO;
                 goto end;
         }
@@ -648,7 +648,7 @@ int
 elf_fs_statfs(const char *path,
               struct statvfs *buf)
 {
-        LOG(LOG_DEBUG, 0, "path=%s, buf=%p", path, (void *) buf);
+        DEBUG("path=%s, buf=%p", path, (void *) buf);
 
         buf->f_flag = ST_RDONLY;
         buf->f_namemax = 255;

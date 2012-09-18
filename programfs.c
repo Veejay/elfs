@@ -69,7 +69,7 @@ programfs_code_setcontent(void *obj_hdl,
         if (buf_len) {
                 buf = malloc(buf_len);
                 if (! buf) {
-                        LOG(LOG_ERR, 0, "malloc: %s", strerror(errno));
+                        ERR("malloc: %s", strerror(errno));
                         ret = ELF_ENOMEM;
                         goto end;
                 }
@@ -129,8 +129,7 @@ programfs_getattr(void *obj_hdl,
                 if (0 == strcmp(obj->name, fcb->str)) {
                         rc = fcb->getsize_func(obj, &st.st_size);
                         if (ELF_SUCCESS != rc) {
-                                LOG(LOG_ERR, 0, "can't get size of '%s'",
-                                    obj->name);
+                                ERR("can't get size of '%s'", obj->name);
                                 ret = rc;
                                 goto end;
                         }
@@ -174,7 +173,7 @@ section_ctor_cb(void *obj_hdl,
                                     ELF_SECTION_PROGBITS_CODE,
                                     ELF_S_IFREG);
                 if (! entry) {
-                        LOG(LOG_ERR, 0, "can't build entry '%s'", fcb->str);
+                        ERR("can't build entry '%s'", fcb->str);
                         continue;
                 }
 
@@ -198,7 +197,7 @@ programfs_build(telf_ctx *ctx)
 
         rc = elf_namei(ctx, "/sections", &obj_sections);
         if (ELF_SUCCESS != rc) {
-                LOG(LOG_ERR, 0, "can't find '/sections' object: %s",
+                ERR("can't find '/sections' object: %s",
                     elf_status_to_str(rc));
                 ret = rc;
                 goto end;

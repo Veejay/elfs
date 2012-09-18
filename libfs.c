@@ -64,15 +64,14 @@ libfs_build(telf_ctx *ctx)
 
         rc = elf_namei(ctx, "/libs", &libfs_obj);
         if (ELF_SUCCESS != rc) {
-                LOG(LOG_ERR, 0, "can't find '/libfs' object: %s",
-                    elf_status_to_str(rc));
+                ERR("can't find '/libfs' object: %s", elf_status_to_str(rc));
                 ret = rc;
                 goto end;
         }
 
         shdr = elf_getsectionbyname(ctx, ".dynsym");
         if (! shdr) {
-                LOG(LOG_ERR, 0, "no SHT_DYNAMIC section");
+                ERR("no SHT_DYNAMIC section");
                 ret = ELF_SUCCESS;
                 goto end;
         }
@@ -86,7 +85,7 @@ libfs_build(telf_ctx *ctx)
         }
 
         if (! found) {
-                LOG(LOG_ERR, 0, "can't find any SHT_DYNAMIC section");
+                ERR("can't find any SHT_DYNAMIC section");
                 ret = ELF_ENOENT;
                 goto end;
         }
@@ -100,8 +99,7 @@ libfs_build(telf_ctx *ctx)
                 if (DT_NEEDED != dyn->d_tag)
                         continue;
 
-                LOG(LOG_DEBUG, 0, " -> %s",
-                    ctx->dstrtab + dyn->d_un.d_val);
+                DEBUG(" -> %s", ctx->dstrtab + dyn->d_un.d_val);
 
                 libname = ctx->dstrtab + dyn->d_un.d_val;
 
@@ -109,11 +107,9 @@ libfs_build(telf_ctx *ctx)
                                     ELF_LIBS_ENTRY,
                                     ELF_S_IFREG);
                 if (! entry) {
-                        LOG(LOG_ERR, 0, "can't build entry '%s'", libname);
+                        ERR("can't build entry '%s'", libname);
                         continue;
                 }
-
-                LOG(LOG_ERR, 0, " -> %s", libname);
 
                 libfs_override_driver(entry->driver);
                 list_add(libfs_obj->entries, entry);

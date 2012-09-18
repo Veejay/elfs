@@ -104,7 +104,7 @@ elf_type_to_str(telf_type type)
 void
 elf_obj_free(telf_obj *obj)
 {
-        LOG(LOG_DEBUG, 0, "free obj @%p, name=%s", (void *) obj, obj->name);
+        DEBUG("free obj @%p, name=%s", (void *) obj, obj->name);
 
         if (obj->entries)
                 list_free(obj->entries);
@@ -158,12 +158,12 @@ elf_obj_new(telf_ctx *ctx,
 {
         telf_obj *obj = NULL;
 
-        LOG(LOG_DEBUG, 0, "build object: path=%s, parent=%p, type=%s",
+        DEBUG("build object: path=%s, parent=%p, type=%s",
             path, (void *) parent, elf_type_to_str(type));
 
         obj = malloc(sizeof *obj);
         if (! obj) {
-                LOG(LOG_ERR, 0, "malloc: %s", strerror(errno));
+                ERR("malloc: %s", strerror(errno));
                 goto err;
         }
 
@@ -171,7 +171,7 @@ elf_obj_new(telf_ctx *ctx,
 
         obj->name = strdup(path);
         if (! obj->name) {
-                LOG(LOG_ERR, 0, "strdup(%s): %s", path, strerror(errno));
+                ERR("strdup(%s): %s", path, strerror(errno));
                 goto err;
         }
 
@@ -183,7 +183,7 @@ elf_obj_new(telf_ctx *ctx,
                 obj->st.st_mode |= ELF_S_IFDIR;
                 obj->entries = list_new();
                 if (! obj->entries) {
-                        LOG(LOG_ERR, 0, "can't create list entries");
+                        ERR("can't create list entries");
                         goto err;
                 }
 
@@ -195,7 +195,7 @@ elf_obj_new(telf_ctx *ctx,
 
         obj->driver = defaultfs_driver_new();
         if (! obj->driver) {
-                LOG(LOG_ERR, 0, "can't create defaultfs driver");
+                ERR("can't create defaultfs driver");
                 goto err;
         }
 
@@ -221,8 +221,7 @@ elf_ctx_free(telf_ctx *ctx)
 
                 if (ctx->pid) {
                         if (ptrace(PTRACE_DETACH, ctx->pid, NULL, NULL) < 0) {
-                                LOG(LOG_ERR, 0, "ptrace_detach: %s",
-                                    strerror(errno));
+                                ERR("ptrace_detach: %s", strerror(errno));
                         }
 
                         if (ctx->ehdr)
@@ -245,13 +244,13 @@ elf_sanity_check(unsigned char *addr)
         telf_status ret;
 
         if (strncmp(addr, ELFMAG, SELFMAG)) {
-                LOG(LOG_ERR, 0, "bad magic: %*s", SELFMAG, addr);
+                ERR("bad magic: %*s", SELFMAG, addr);
                 ret = ELF_FAILURE;
                 goto end;
         }
 
         if (ELFCLASSNONE == addr + EI_CLASS) {
-                LOG(LOG_ERR, 0, "bad elf class %c", addr[EI_CLASS]);
+                ERR("bad elf class %c", addr[EI_CLASS]);
                 ret = ELF_FAILURE;
                 goto end;
         }
@@ -290,7 +289,7 @@ elf_compute_base_vaddr(telf_ctx *ctx)
 
         ctx->base_vaddr = (min_vaddr & ~(sysconf(_SC_PAGESIZE) -1));
 
-        LOG(LOG_DEBUG, 0, "base virtual address: %p", (void *) ctx->base_vaddr);
+        DEBUG("base virtual address: %p", (void *) ctx->base_vaddr);
 }
 
 static telf_status
@@ -317,14 +316,14 @@ elf_mmap_internal(telf_ctx *ctx)
 
         fd = open(ctx->binpath, 0600, O_RDONLY);
         if (-1 == fd) {
-                LOG(LOG_ERR, 0, "open '%s': %s", ctx->binpath, strerror(errno));
+                ERR("open '%s': %s", ctx->binpath, strerror(errno));
                 ret = ELF_FAILURE;
                 goto err;
         }
 
         addr = mmap(NULL, ctx->st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
         if (MAP_FAILED == addr) {
-                LOG(LOG_ERR, 0, "mmap: %s", strerror(errno));
+                ERR("mmap: %s", strerror(errno));
                 ret = ELF_FAILURE;
                 goto err;
         }
@@ -333,13 +332,12 @@ elf_mmap_internal(telf_ctx *ctx)
 
         rc = elf_sanity_check(ctx->addr);
         if (ELF_SUCCESS != rc) {
-                LOG(LOG_ERR, 0, "sanity checks failed: %s",
-                    elf_status_to_str(rc));
+                ERR("sanity checks failed: %s", elf_status_to_str(rc));
                 ret = ELF_FAILURE;
                 goto err;
         }
 
-        LOG(LOG_DEBUG, 0, "elf header: %p", addr);
+        DEBUG("elf header: %p", addr);
 
         ret = ELF_SUCCESS;
   err:
@@ -357,12 +355,12 @@ elf_ctx_new(telf_options *opt)
         telf_status rc;
         int iret;
 
-        LOG(LOG_DEBUG, 0, "mount file '%s' on '%s'",
+        DEBUG("mount file '%s' on '%s'",
             opt->binfile, opt->mountpoint);
 
         ctx = malloc(sizeof *ctx);
         if (! ctx) {
-                LOG(LOG_ERR, 0, "malloc: %s", strerror(errno));
+                ERR("malloc: %s", strerror(errno));
                 goto err;
         }
 
@@ -370,8 +368,7 @@ elf_ctx_new(telf_options *opt)
 
         iret = mkdir(opt->mountpoint, 0755);
         if (-1 == iret && EEXIST != errno) {
-                LOG(LOG_ERR, 0, "mkdir(%s): %s",
-                    opt->mountpoint, strerror(errno));
+                ERR("mkdir(%s): %s", opt->mountpoint, strerror(errno));
                 goto err;
         }
 
@@ -383,7 +380,7 @@ elf_ctx_new(telf_options *opt)
 
                 len = readlink(pidpath, ctx->binpath, sizeof ctx->binpath -1);
                 if (-1 == len) {
-                        LOG(LOG_ERR, 0, "readlink: %s", strerror(errno));
+                        ERR("readlink: %s", strerror(errno));
                         goto err;
                 }
 
@@ -393,36 +390,35 @@ elf_ctx_new(telf_options *opt)
 
                 iret = ptrace(PTRACE_ATTACH, ctx->pid, NULL, NULL);
                 if (-1 == iret) {
-                        LOG(LOG_ERR, 0, "ptrace: %s", strerror(errno));
+                        ERR("ptrace: %s", strerror(errno));
                         goto err;
                 }
 
-                LOG(LOG_DEBUG, 0, "pid %d attached", ctx->pid);
+                DEBUG("pid %d attached", ctx->pid);
                 waitpid(ctx->pid, NULL, WUNTRACED);
 
         } else {
                 if (NULL == realpath(opt->binfile, ctx->binpath)) {
-                        LOG(LOG_ERR, 0, "realpath(%s): %s",
-                            opt->binfile, strerror(errno));
+                        ERR("realpath(%s): %s", opt->binfile, strerror(errno));
                         goto err;
                 }
         }
 
         iret = stat(ctx->binpath, &ctx->st);
         if (-1 == iret) {
-                LOG(LOG_ERR, 0, "stat(%s): %s", opt->binfile, strerror(errno));
+                ERR("stat(%s): %s", opt->binfile, strerror(errno));
                 goto err;
         }
 
         rc = elf_mmap_internal(ctx);
         if (ELF_SUCCESS != rc) {
-                LOG(LOG_ERR, 0, "can't mmap() file in memory");
+                ERR("can't mmap() file in memory");
                 goto err;
         }
 
         rc = elf_set_headers(ctx);
         if (ELF_SUCCESS != rc) {
-                LOG(LOG_ERR, 0, "can't set elf header structures: %s",
+                ERR("can't set elf header structures: %s",
                     elf_status_to_str(rc));
                 goto err;
         }
@@ -431,13 +427,13 @@ elf_ctx_new(telf_options *opt)
 
         rc = rootfs_build(ctx);
         if (ELF_SUCCESS != rc) {
-                LOG(LOG_ERR, 0, "rootfs build failed");
+                ERR("rootfs build failed");
                 goto err;
         }
 
         rc = sectionfs_build(ctx);
         if (ELF_SUCCESS != rc) {
-                LOG(LOG_ERR, 0, "sections build failed");
+                ERR("sections build failed");
                 goto err;
         }
 
@@ -445,17 +441,17 @@ elf_ctx_new(telf_options *opt)
          * specific ones */
         rc = symbolfs_build(ctx);
         if (ELF_SUCCESS != rc)
-                LOG(LOG_ERR, 0, "binary is stripped?");
+                ERR("binary is stripped?");
 
         rc = programfs_build(ctx);
         if (ELF_SUCCESS != rc) {
-                LOG(LOG_ERR, 0, "programfs build failed");
+                ERR("programfs build failed");
                 goto err;
         }
 
         rc = libfs_build(ctx);
         if (ELF_SUCCESS != rc) {
-                LOG(LOG_ERR, 0, "libfs build failed");
+                ERR("libfs build failed");
                 goto err;
         }
 
@@ -600,7 +596,7 @@ main(int argc,
 
         ctx = elf_ctx_new(&options);
         if (! ctx) {
-                LOG(LOG_ERR, 0, "ctx creation failed");
+                ERR("ctx creation failed");
                 exit(EXIT_FAILURE);
         }
 

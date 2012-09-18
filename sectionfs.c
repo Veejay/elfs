@@ -28,8 +28,7 @@ sectionfs_build(telf_ctx *ctx)
 
         rc = elf_namei(ctx, "/sections", &sections_obj);
         if (ELF_SUCCESS != rc) {
-                LOG(LOG_ERR, 0, "can't find any section entry: %s",
-                    elf_status_to_str(rc));
+                ERR("can't find any section entry: %s", elf_status_to_str(rc));
                 ret = ELF_ENOENT;
                 goto end;
         }
@@ -69,15 +68,14 @@ sectionfs_build(telf_ctx *ctx)
                         MAP(STRTAB);
 #undef MAP
                 default:
-                        LOG(LOG_ERR, 0, "unknown object type: 0x%x",
-                            shdr->sh_type);
+                        ERR("unknown object type: 0x%x", shdr->sh_type);
                         type = ELF_SECTION_OTHER;
                         break;
                 }
 
                 obj = elf_obj_new(ctx, name, sections_obj, type, ELF_S_IFDIR);
                 if (! obj) {
-                        LOG(LOG_ERR, 0, "obj '%s' creation failed", name);
+                        ERR("obj '%s' creation failed", name);
                         ret = ELF_FAILURE;
                         goto end;
                 }

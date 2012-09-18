@@ -21,7 +21,7 @@ defaultfs_getattr(void *obj_hdl,
 
         elf_obj_lock(obj);
 
-        LOG(LOG_DEBUG, 0, "name:%s data=%p", obj->name, obj->data);
+        DEBUG("name:%s data=%p", obj->name, obj->data);
 
         memcpy(st, &obj->st, sizeof *st);
         st->st_nlink = 1;
@@ -31,7 +31,7 @@ defaultfs_getattr(void *obj_hdl,
 
         elf_obj_unlock(obj);
 
-        LOG(LOG_DEBUG, 0, "ret=%s (%d)", elf_status_to_str(ret), ret);
+        DEBUG("ret=%s (%d)", elf_status_to_str(ret), ret);
         return ret;
 }
 
@@ -57,11 +57,11 @@ defaultfs_open(char *path,
         elf_obj_lock(obj);
         locked = 1;
 
-        LOG(LOG_DEBUG, 0, "name:%s data=%p", obj->name, obj->data);
+        DEBUG("name:%s data=%p", obj->name, obj->data);
 
         content = malloc(sizeof *content);
         if (! content) {
-                LOG(LOG_ERR, 0, "malloc: %s", strerror(errno));
+                ERR("malloc: %s", strerror(errno));
                 ret = ELF_ENOMEM;
                 goto end;
         }
@@ -85,7 +85,7 @@ defaultfs_open(char *path,
         if (objp)
                 *objp = obj;
 
-        LOG(LOG_DEBUG, 0, "obj->data=%p, ret=%s (%d)",
+        DEBUG("obj->data=%p, ret=%s (%d)",
             obj->data, elf_status_to_str(ret), ret);
         return ret;
 }
@@ -97,7 +97,7 @@ defaultfs_release(void *obj_hdl)
 
         elf_obj_lock(obj);
 
-        LOG(LOG_DEBUG, 0, "name:%s data=%p", obj->name, obj->data);
+        DEBUG("name:%s data=%p", obj->name, obj->data);
 
         if (obj->free_func) {
                 obj->free_func(obj->data);
@@ -123,7 +123,7 @@ defaultfs_read(void *obj_hdl,
 
         elf_obj_lock(obj);
 
-        LOG(LOG_DEBUG, 0, "name:%s data=%p", obj->name, obj->data);
+        DEBUG("name:%s data=%p", obj->name, obj->data);
 
         content = obj->data;
 
@@ -131,7 +131,7 @@ defaultfs_read(void *obj_hdl,
         if (! content) {
                 content = malloc(sizeof *content);
                 if (! content) {
-                        LOG(LOG_ERR, 0, "malloc: %s", strerror(errno));
+                        ERR("malloc: %s", strerror(errno));
                         ret = ELF_ENOMEM;
                         goto end;
                 }
@@ -160,7 +160,7 @@ defaultfs_read(void *obj_hdl,
 
         elf_obj_unlock(obj);
 
-        LOG(LOG_DEBUG, 0, "ret=%s (%d)", elf_status_to_str(ret), ret);
+        DEBUG("ret=%s (%d)", elf_status_to_str(ret), ret);
         return ret;
 }
 
@@ -279,11 +279,11 @@ defaultfs_readdir(void *obj_hdl,
         telf_dirent dirent;
         int locked = 0;
 
-        LOG(LOG_DEBUG, 0, "%s", obj->name);
+        DEBUG("%s", obj->name);
 
         dir_hdl = alloca(sizeof *dir_hdl);
         if (! dir_hdl) {
-                LOG(LOG_ERR, 0, "alloca: %s", strerror(errno));
+                ERR("alloca: %s", strerror(errno));
                 ret = ELF_ENOMEM;
                 goto err;
         }
@@ -329,7 +329,7 @@ defaultfs_driver_new(void)
 
         driver = malloc(sizeof *driver);
         if (! driver) {
-                LOG(LOG_ERR, 0, "malloc: %s", strerror(errno));
+                ERR("malloc: %s", strerror(errno));
                 return NULL;
         }
 
