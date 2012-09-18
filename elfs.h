@@ -68,6 +68,8 @@ typedef struct self_ctx {
         Elf64_Addr base_vaddr;  /* the virtual base address */
         int n_sections;         /* number of sections */
 
+        tlist *libpath;         /* paths where libs are located */
+
         Elf64_Sym *symtab;      /* symbol table */
         int n_syms;
         char *strtab;           /* string table */

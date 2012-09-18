@@ -30,7 +30,6 @@
 #include <sys/wait.h>
 #endif
 
-
 telf_ctx *ctx = NULL;
 
 #define MAP(v) X(v, #v)
@@ -234,6 +233,9 @@ elf_ctx_free(telf_ctx *ctx)
                                 free(ctx->phdr);
                 }
 
+                if (ctx->libpath)
+                        list_free(ctx->libpath);
+
                 free(ctx);
         }
 }
@@ -418,8 +420,7 @@ elf_ctx_new(telf_options *opt)
 
         rc = elf_set_headers(ctx);
         if (ELF_SUCCESS != rc) {
-                ERR("can't set elf header structures: %s",
-                    elf_status_to_str(rc));
+                ERR("can't set elf header: %s", elf_status_to_str(rc));
                 goto err;
         }
 
@@ -432,7 +433,7 @@ elf_ctx_new(telf_options *opt)
         }
 
         rc = sectionfs_build(ctx);
-        if (ELF_SUCCESS != rc) {
+        if (ELF_SUCCESS != rc && ELF_ENOENT != rc) {
                 ERR("sections build failed");
                 goto err;
         }
@@ -440,8 +441,10 @@ elf_ctx_new(telf_options *opt)
         /* now that 'generic' sections are built, initialize
          * specific ones */
         rc = symbolfs_build(ctx);
-        if (ELF_SUCCESS != rc)
-                ERR("binary is stripped?");
+        if (ELF_SUCCESS != rc && ELF_ENOENT != rc) {
+                ERR("symbolfs build failed");
+                goto err;
+        }
 
         rc = programfs_build(ctx);
         if (ELF_SUCCESS != rc) {
@@ -450,7 +453,7 @@ elf_ctx_new(telf_options *opt)
         }
 
         rc = libfs_build(ctx);
-        if (ELF_SUCCESS != rc) {
+        if (ELF_SUCCESS != rc && ELF_ENOENT != rc) {
                 ERR("libfs build failed");
                 goto err;
         }
@@ -597,7 +600,6 @@ main(int argc,
 
         struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
         ret = fuse_main(args.argc, args.argv, &elf_fs_ops, NULL);
-
   end:
         closelog();
 

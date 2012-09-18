@@ -22,6 +22,7 @@ symbolfs_symtab_build(telf_ctx *ctx)
         telf_obj *obj = NULL;
         char *name = NULL;
         char path[256];
+        Elf64_Shdr *shdr = NULL;
 
         rc = elf_namei(ctx, "/sections/symtab", &symtab_obj);
         if (ELF_SUCCESS != rc) {
@@ -30,16 +31,11 @@ symbolfs_symtab_build(telf_ctx *ctx)
                 goto end;
         }
 
-        for (i = 0; i < ctx->ehdr->e_shnum; i++) {
-                Elf64_Shdr *shdr = ctx->shdr + i;
-
-                if (SHT_SYMTAB != shdr->sh_type)
-                        continue;
-
+        shdr = elf_getsectionbytype(ctx, SHT_SYMTAB);
+        if (shdr) {
                 ctx->n_syms = shdr->sh_size / sizeof (Elf64_Sym);
                 ctx->symtab = (Elf64_Sym *) (ctx->addr + shdr->sh_offset);
                 ctx->strtab = ctx->addr + ctx->shdr[shdr->sh_link].sh_offset;
-                break;
         }
 
         if (! ctx->n_syms) {
@@ -99,26 +95,21 @@ symbolfs_dynsym_build(telf_ctx *ctx)
         telf_obj *dynsym_obj = NULL;
         char *name = NULL;
         char path[256];
+        Elf64_Shdr *shdr = NULL;
 
         rc = elf_namei(ctx, "/sections/dynsym", &dynsym_obj);
         if (ELF_SUCCESS != rc) {
                 ERR("can not find '/sections/dynsym': %s",
                     elf_status_to_str(rc));
-                ret = rc;
+                ret = ELF_ENOENT;
                 goto end;
         }
 
-        for (i = 0; i < ctx->ehdr->e_shnum; i++) {
-                Elf64_Shdr *shdr = ctx->shdr + i;
-
-                /* dynamic symbol table */
-                if (SHT_DYNSYM != shdr->sh_type)
-                        continue;
-
+        shdr = elf_getsectionbytype(ctx, SHT_DYNSYM);
+        if (shdr) {
                 ctx->n_dsyms = shdr->sh_size / sizeof (Elf64_Sym);
                 ctx->dsymtab = (Elf64_Sym *) (ctx->addr + shdr->sh_offset);
                 ctx->dstrtab = ctx->addr + ctx->shdr[shdr->sh_link].sh_offset;
-                break;
         }
 
         if (! ctx->n_dsyms) {

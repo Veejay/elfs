@@ -132,6 +132,27 @@ elf_getsectionbyname(telf_ctx *ctx,
         return NULL;
 }
 
+Elf64_Shdr *
+elf_getsectionbytype(telf_ctx *ctx,
+                     unsigned int type)
+{
+        Elf64_Shdr *shdr = NULL;
+        int i;
+        int found = 0;
+
+        for (i = 0; i < ctx->ehdr->e_shnum && 0 == found; i++) {
+                shdr = elf_getnsection(ctx, i);
+
+                if (type == shdr->sh_type)
+                        found = 1;
+        }
+
+        if (found)
+                return shdr;
+        else
+                return NULL;
+}
+
 char *
 elf_getsymname(telf_ctx *ctx,
             Elf64_Sym *sym)

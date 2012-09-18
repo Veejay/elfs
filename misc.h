@@ -11,6 +11,7 @@ Elf64_Shdr *elf_getnsection(telf_ctx *ctx, int n);
 char *elf_getsectionname(telf_ctx *ctx, Elf64_Shdr *shdr);
 char *elf_getnsectionname(telf_ctx *ctx, int n);
 Elf64_Shdr *elf_getsectionbyname(telf_ctx *ctx, char *name);
+Elf64_Shdr * elf_getsectionbytype(telf_ctx *ctx, unsigned int type);
 
 /** return thge name of a given symbol */
 char *elf_getsymname(telf_ctx *ctx, Elf64_Sym *sym);

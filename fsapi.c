@@ -352,6 +352,7 @@ elf_fs_getattr(const char *path,
 
         ret = 0;
   end:
+
         DEBUG("path=%s, ret=%d", path, ret);
         return ret;
 }
@@ -569,6 +570,8 @@ elf_fs_readlink(const char *path,
         telf_obj *obj = NULL;
         telf_status rc;
         int ret;
+        size_t buf_len;
+        char *tmpbuf = NULL;
 
         DEBUG("%s", path);
 
@@ -578,16 +581,22 @@ elf_fs_readlink(const char *path,
                 goto end;
         }
 
-        rc = obj->driver->readlink(obj, &buf, &bufsiz);
+        rc = obj->driver->readlink(obj, &tmpbuf, &buf_len);
         if (ELF_SUCCESS != rc) {
-                ERR("getattr failed: %s", elf_status_to_str(rc));
+                ERR("readlink failed: %s", elf_status_to_str(rc));
                 ret = rc;
                 goto end;
         }
 
+        strncpy(buf, tmpbuf, buf_len);
+        buf[buf_len] = 0;
+
         ret = 0;
   end:
-        DEBUG("path=%s, ret=%d", path, ret);
+        if (tmpbuf)
+                free(tmpbuf);
+
+        DEBUG("path=%s => buf=%s, ret=%d", path, tmpbuf, ret);
         return ret;
 }
 

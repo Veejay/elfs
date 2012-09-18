@@ -50,11 +50,16 @@ The 'info' file contains ELF Header informations (almost the same format than re
         Number of Section Header entries:  30
         SH string table index:             27
 
-Check the libraries?
+Check the libraries: display the list and their path on the FS
 
         $ ls -l /tmp/elf/libs
         total 0
-        -rwxrwxrwx 0 root root 9 1970-01-01 01:00 libc.so.6
+        lrwxrwxrwx 0 root root 0 1970-01-01 01:00 libc.so.6 -> /lib/x86_64-linux-gnu/libc.so.6
+        lrwxrwxrwx 0 root root 0 1970-01-01 01:00 libm.so.6 -> /lib/x86_64-linux-gnu/libm.so.6
+        lrwxrwxrwx 0 root root 0 1970-01-01 01:00 libX11.so.6 -> /usr/lib/x86_64-linux-gnu/libX11.so.6
+        lrwxrwxrwx 0 root root 0 1970-01-01 01:00 libXaw.so.7 -> /usr/lib32/libXaw.so.7
+        lrwxrwxrwx 0 root root 0 1970-01-01 01:00 libXft.so.2 -> /usr/lib/x86_64-linux-gnu/libXft.so.2
+        [...]
 
 
 If you want to inspect the sections:
