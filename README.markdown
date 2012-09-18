@@ -11,13 +11,11 @@ the structure of an ELF object.
         $ git clone git://github.com/pozdnychev/elfs
         $ cd elfs
         $ make or make -f Makefile on Linux platform
-	$ make -f BSDMakefile on BSD platform
+	      $ make -f BSDMakefile on BSD platform
 
 And now, with root privileges:
 
         $ make install
-
-
 
 1. USAGE
 ========
@@ -32,7 +30,7 @@ If you want to inspect the fdup(1) program, and mount its image into /tmp/elf:
         d--------- 1 root root   0 1970-01-01 01:00 libs
         d--------- 1 root root   0 1970-01-01 01:00 sections
 
-The 'info' file contains ELF Header informations (almost the same format than readelf -h):
+The 'info' file contains ELF header information (pretty much the same format provided by readelf -h):
 
         $ cat /tmp/elf/info
         Ident:                             7f 45 4c 46 02 01 01 00 00 00 00 00 00 00 00 00
@@ -50,7 +48,7 @@ The 'info' file contains ELF Header informations (almost the same format than re
         Number of Section Header entries:  30
         SH string table index:             27
 
-Check the libraries: display the list and their path on the FS
+Check the libraries: display the list and their path on the file system
 
         $ ls -l /tmp/elf/libs
         total 0
@@ -108,6 +106,7 @@ If you want to inspect the sections:
         dr-x------ 1 root root 0 1970-01-01 01:00 text
 
 We set the rwx bits, according to the Section Header flags:
+
         SHR_WRITE     -> w bit
         SHR_ALLOC     -> r bit
         SHR_EXECINSTR -> x bits
@@ -130,7 +129,7 @@ We set the rwx bits, according to the Section Header flags:
         0000020 8b 50 20 48 8b 45 f0 8b 40 20 39 c2 75 07 b8 00
         0000040 00 00 00 eb 05 b8 ff ff ff ff c9 c3
 
-Let's see the code associated to this symbol (it's ok, since it's a function,
+Let's see the code associated with this symbol (it's ok, since it's a function,
 type STT_FUNC):
 
         $ cat /tmp/elf/sections/symtab/dup_cmp_gid/code.asm
@@ -150,14 +149,13 @@ type STT_FUNC):
         leave
         ret
 
-We can check that the code is correct, taking a look directly at the binary:
+We can check that the code is correct just by taking a look at the binary:
 
        $ readelf -s /usr/local/bin/fdup | grep dup_cmp_gid
        62: 0000000000401b00    44 FUNC    LOCAL  DEFAULT   13 dup_cmp_gid
 
-We know that on Intel 64 bits architectures, on Linux, the base address where
-binaries are loaded is at the virtual memory address 0x400000 (0x804800 for 32
-bits):
+We know that for Intel 64-bit architectures on Linux, binaries are loaded 
+at virtual memory address 0x400000 (0x804800 for 32-bit architectures):
 
        $ echo 'ibase=16;401B00-400000' | bc
        6912
@@ -169,8 +167,8 @@ bits):
        0015454
 
 
-You can also attach a running process, but the feature is pretty experimental,
-and you might encounter strange/wrong behavior.  Here is an simple example:
+You can also attach a running process but the feature being pretty experimental,
+use at your own risk as you might encounter strange/wrong behavior.  Here is a simple example:
 
         $ sudo elfs -p `pidof xclock` /tmp/elf
         $ sudo ls -l /tmp/elf/libs
@@ -186,7 +184,7 @@ and you might encounter strange/wrong behavior.  Here is an simple example:
         -rwxrwxrwx 0 root root 10 1970-01-01 01:00 libXt.so.6
 
 
-For more informations, just type:
+For more information, just type:
 
         $ elfs -h
 
@@ -206,5 +204,3 @@ With root privileges, in elfs source directory:
 Please report bugs and comments to:
 
        https://github.com/pozdnychev/elfs/issues
-
-
