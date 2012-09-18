@@ -115,7 +115,7 @@ elf_obj_free(telf_obj *obj)
         if (obj->driver)
                 free(obj->driver);
 
-        if (obj->data)
+        if (obj->free_func)
                 obj->free_func(obj->data);
 
         free(obj);
