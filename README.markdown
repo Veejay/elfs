@@ -1,9 +1,7 @@
 A FUSE filesystem on top of ELF files!
 
-
-This tool is mostly for educational purposes, it allows to easily visualize
+This tool is mostly for educational purposes and allows the user to easily visualize
 the structure of an ELF object.
-
 
 0. INSTALLATION
 ===============
@@ -129,6 +127,7 @@ We set the rwx bits, according to the Section Header flags:
         0000020 8b 50 20 48 8b 45 f0 8b 40 20 39 c2 75 07 b8 00
         0000040 00 00 00 eb 05 b8 ff ff ff ff c9 c3
 
+
 Let's see the code associated with this symbol (it's ok, since it's a function,
 type STT_FUNC):
 
@@ -189,14 +188,12 @@ For more information, just type:
         $ elfs -h
 
 
-
 2. UNINSTALL
 ============
 
 With root privileges, in elfs source directory:
 
      $ make uninstall
-
 
 3. ISSUES
 =========
