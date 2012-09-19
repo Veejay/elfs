@@ -6,20 +6,20 @@ the structure of an ELF object.
 0. INSTALLATION
 ===============
 
-  $ git clone git://github.com/pozdnychev/elfs
-  $ cd elfs
+        $ git clone git://github.com/pozdnychev/elfs
+        $ cd elfs
 
 Then on Linux platforms:
 
-  $ make or make -f Makefile 
+        $ make or make -f Makefile 
 
 or on BSD platforms:
 
-  $ make -f BSDMakefile
+        $ make -f BSDMakefile
 
 And now, with root privileges:
 
-  $ make install
+        $ make install
 
 1. USAGE
 ========
