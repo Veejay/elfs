@@ -5,13 +5,13 @@ the structure of an ELF object.
 
 0. INSTALLATION
 ===============
-```shell
-$ git clone git://github.com/pozdnychev/elfs
-$ cd elfs
-```
-Then on Linux platforms:
+    $ git clone git://github.com/pozdnychev/elfs
+    $ cd elfs
 
-    $ make or make -f Makefile 
+Then on Linux platforms:
+    $ make 
+or 
+    $ make -f Makefile 
 
 or on BSD platforms:
 
